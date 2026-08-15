@@ -8,16 +8,17 @@ generator client {
 }
 
 model User {
-  id            String          @id @default(auto()) @map("_id") @db.ObjectId
+  id            String             @id @default(auto()) @map("_id") @db.ObjectId
   name          String?
-  email         String?         @unique
+  email         String?            @unique
   emailVerified DateTime?
   image         String?
-  role          String          @default("user") // "admin" or "user"
+  role          String             @default("user") // "admin" or "user"
   accounts      Account[]
   sessions      Session[]
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
+  participants  EventParticipant[]
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
 }
 
 model Account {
@@ -60,4 +61,31 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+model Event {
+  id           String             @id @default(auto()) @map("_id") @db.ObjectId
+  title        String
+  description  String?
+  location     String?
+  startDate    DateTime?
+  endDate      DateTime?
+  code         String             @unique
+  status       String             @default("active")
+  createdBy    String?            @db.ObjectId
+  participants EventParticipant[]
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+}
+
+model EventParticipant {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  eventId  String   @db.ObjectId
+  userId   String   @db.ObjectId
+  joinedAt DateTime @default(now())
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
 }
