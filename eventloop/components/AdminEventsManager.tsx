@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Plus, QrCode, Trash2, Calendar, MapPin, Tag, Check, AlertCircle, Sparkles, Users } from "lucide-react";
+import HypeMeterManager from "@/components/HypeMeterManager";
 
 export interface ParticipantItem {
   id?: string;
@@ -354,6 +355,9 @@ export default function AdminEventsManager({
                       </div>
                     </div>
                   )}
+                  
+                  {/* Hype Meter Manager */}
+                  <HypeMeterManager eventId={evt.id} backendUrl={backendUrl} />
                 </div>
               );
             })}
