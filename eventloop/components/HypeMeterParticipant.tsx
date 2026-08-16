@@ -14,12 +14,8 @@ export default function HypeMeterParticipant() {
     <div className="mt-6 w-full p-4 md:p-6 bg-black border border-zinc-800 rounded-2xl relative overflow-hidden animate-slide-up">
       <div className="relative z-10 flex flex-col items-center space-y-4">
         <div className="text-center">
-          <h3 className="text-xl font-bold text-white flex items-center justify-center gap-2">
-            <Flame className="w-5 h-5 text-white" />
-            {hypeData.title}
-          </h3>
           <p className="text-sm text-zinc-400 mt-1">
-            Tap on the full screen overlay to build hype! Goal: {hypeData.tapsNeeded.toLocaleString()}
+            Tap on the full screen overlay to build hype!
           </p>
         </div>
 

@@ -4,7 +4,7 @@ import { handleSignIn } from "@/app/actions";
 
 export default async function LoginPage() {
   const session = await auth();
-  if (session) redirect("/");
+  if (session) redirect("/profile");
 
   return (
     <div className="flex-1 flex items-center justify-center p-4 relative overflow-hidden">

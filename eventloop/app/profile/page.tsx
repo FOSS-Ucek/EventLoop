@@ -1,6 +1,8 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import ProfileForm from "./ProfileForm";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 
 export const revalidate = 0;
 
@@ -37,8 +39,13 @@ export default async function ProfilePage() {
   };
 
   return (
-    <div className="p-6 max-w-2xl mx-auto space-y-6 text-white w-full">
-      <h1 className="text-2xl font-bold">Profile Settings</h1>
+    <div className="p-6 max-w-2xl mx-auto space-y-4 text-white w-full">
+      <Link
+        href="/"
+        className="inline-flex items-center gap-2 text-xs text-zinc-400 hover:text-white transition-colors min-h-[44px]"
+      >
+        <ArrowLeft className="w-4 h-4" /> Back to Home
+      </Link>
       <div className="glass border border-zinc-800 p-6 rounded-2xl shadow-sm">
         <ProfileForm user={userProfile} />
       </div>

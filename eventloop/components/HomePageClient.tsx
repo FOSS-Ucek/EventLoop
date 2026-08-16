@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import QRScanner from "@/components/QRScanner";
-import { QrCode, Calendar, MapPin, Tag, LogOut, CheckCircle2, AlertCircle, ExternalLink, LogIn } from "lucide-react";
+import { Calendar, LogOut, AlertCircle, LogIn, Pencil, QrCode, Loader2 } from "lucide-react";
 import { useEvent } from "@/components/providers/EventProvider";
 
 interface UserProfile {
@@ -23,6 +23,7 @@ interface EventItem {
   endDate?: string | null;
   code: string;
   status: string;
+  logoUrl?: string | null;
   createdAt: string;
 }
 
@@ -32,13 +33,28 @@ interface HomePageClientProps {
 }
 
 export default function HomePageClient({ userProfile, backendUrl }: HomePageClientProps) {
-  const { setEventId } = useEvent();
-  const [activeEvent, setActiveEvent] = useState<EventItem | null>(null);
+  const { setEventId, eventConfig } = useEvent();
+
+  // Synchronously initialize activeEvent from localStorage to prevent UI flashing
+  const [activeEvent, setActiveEvent] = useState<EventItem | null>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const stored = localStorage.getItem("activeEvent");
+        if (stored) return JSON.parse(stored);
+      } catch {}
+    }
+    return null;
+  });
+
   const [showScanner, setShowScanner] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [pendingEventCode, setPendingEventCode] = useState<string | null>(null);
+
+  const hideLeaveButton =
+    process.env.NEXT_PUBLIC_DISABLE_LEAVE_BUTTON === "true" ||
+    process.env.NEXT_PUBLIC_HIDE_LEAVE_BUTTON === "true";
 
   // Helper to join event on backend (Requires authenticated user)
   const joinEventOnBackend = async (codeOrId: string) => {
@@ -68,7 +84,6 @@ export default function HomePageClient({ userProfile, backendUrl }: HomePageClie
         setActiveEvent(data.event);
         localStorage.setItem("activeEvent", JSON.stringify(data.event));
         setEventId(data.event.id); // Integrate with EventProvider
-        setSuccessMsg(`Successfully joined event "${data.event.title}"!`);
         setShowScanner(false);
         setPendingEventCode(null);
       } else {
@@ -84,13 +99,16 @@ export default function HomePageClient({ userProfile, backendUrl }: HomePageClie
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      // 1. Check process.env.NEXT_PUBLIC_EVENT_ID first
+      let isSubscribed = true;
       const envEventId = process.env.NEXT_PUBLIC_EVENT_ID;
-      if (envEventId) {
-        if (userProfile?.id) {
-          joinEventOnBackend(envEventId);
-        } else {
-          const fetchEnvEvent = async () => {
+
+      const loadEventData = async () => {
+        setIsInitialLoading(true);
+
+        if (envEventId) {
+          if (userProfile?.id) {
+            await joinEventOnBackend(envEventId);
+          } else {
             try {
               const res = await fetch(`${backendUrl}/api/event/state?eventId=${envEventId}`);
               const data = await res.json();
@@ -100,57 +118,69 @@ export default function HomePageClient({ userProfile, backendUrl }: HomePageClie
                   title: data.config.eventName,
                   code: data.config.eventId,
                   status: "active",
+                  logoUrl: data.config.brand?.logoUrl,
                   createdAt: new Date().toISOString(),
                 };
-                setActiveEvent(eventObj);
-                setEventId(envEventId);
+                if (isSubscribed) {
+                  setActiveEvent(eventObj);
+                  setEventId(envEventId);
+                }
               }
             } catch (err) {
               console.error("Failed to resolve env event ID:", err);
             }
-          };
-          fetchEnvEvent();
-        }
-      } else if (!userProfile?.id) {
-        // 2. If user is logged out and no env var, clear active event state
-        setActiveEvent(null);
-        localStorage.removeItem("activeEvent");
-        setEventId(null);
-      } else {
-        // 3. User is logged in: fetch joined events from database
-        const fetchJoinedEvents = async () => {
+          }
+        } else if (!userProfile?.id) {
+          if (isSubscribed) {
+            setActiveEvent(null);
+            localStorage.removeItem("activeEvent");
+            setEventId(null);
+          }
+        } else {
+          // User is logged in: fetch joined events from database
           try {
             const res = await fetch(`${backendUrl}/api/user/joined-events?userId=${userProfile.id}`);
             const data = await res.json();
             if (res.ok && data.success && Array.isArray(data.events) && data.events.length > 0) {
               const latestEvent = data.events[0];
-              setActiveEvent(latestEvent);
-              localStorage.setItem("activeEvent", JSON.stringify(latestEvent));
-              setEventId(latestEvent.id);
+              if (isSubscribed) {
+                setActiveEvent(latestEvent);
+                localStorage.setItem("activeEvent", JSON.stringify(latestEvent));
+                setEventId(latestEvent.id);
+              }
             }
           } catch (err) {
             console.error("Failed to load joined events from backend:", err);
           }
-        };
-
-        fetchJoinedEvents();
-      }
-
-      // 3. Check URL parameters for scanned event code
-      const urlParams = new URLSearchParams(window.location.search);
-      const codeFromUrl = urlParams.get("eventCode") || urlParams.get("code") || urlParams.get("eventId");
-
-      if (codeFromUrl) {
-        if (userProfile?.id) {
-          joinEventOnBackend(codeFromUrl);
-        } else {
-          setPendingEventCode(codeFromUrl);
-          setError("You scanned an event QR code, but you must be signed in to join.");
         }
-        // Clean URL query
-        const newUrl = window.location.pathname;
-        window.history.replaceState({}, "", newUrl);
-      }
+
+        // Check URL parameters for scanned event code
+        const urlParams = new URLSearchParams(window.location.search);
+        const codeFromUrl = urlParams.get("eventCode") || urlParams.get("code") || urlParams.get("eventId");
+
+        if (codeFromUrl) {
+          if (userProfile?.id) {
+            await joinEventOnBackend(codeFromUrl);
+          } else {
+            if (isSubscribed) {
+              setPendingEventCode(codeFromUrl);
+              setError("You scanned an event QR code, but you must be signed in to join.");
+            }
+          }
+          const newUrl = window.location.pathname;
+          window.history.replaceState({}, "", newUrl);
+        }
+
+        if (isSubscribed) {
+          setIsInitialLoading(false);
+        }
+      };
+
+      loadEventData();
+
+      return () => {
+        isSubscribed = false;
+      };
     }
   }, [userProfile?.id, backendUrl, setEventId]);
 
@@ -162,30 +192,16 @@ export default function HomePageClient({ userProfile, backendUrl }: HomePageClie
     setActiveEvent(null);
     localStorage.removeItem("activeEvent");
     setEventId(null);
-    setSuccessMsg(null);
     setError(null);
   };
 
-  return (
-    <div className="space-y-8 animate-fade-in w-full text-white">
-      {/* Notifications */}
-      {successMsg && (
-        <div className="p-4 bg-zinc-900 border border-zinc-700/50 text-white rounded-2xl text-sm flex items-center justify-between shadow-sm animate-slide-up min-h-[44px]">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-5 h-5 text-white flex-shrink-0" />
-            <span className="font-medium">{successMsg}</span>
-          </div>
-          <button
-            onClick={() => setSuccessMsg(null)}
-            className="text-xs text-zinc-400 hover:text-white hover:underline min-h-[44px] px-2 flex items-center"
-          >
-            Dismiss
-          </button>
-        </div>
-      )}
+  const eventImageUrl = activeEvent?.logoUrl || eventConfig?.brand?.logoUrl;
 
+  return (
+    <div className="space-y-8 animate-fade-in w-full text-white flex flex-col items-center justify-center">
+      {/* Error Notification */}
       {error && (
-        <div className="p-4 bg-zinc-900 border border-zinc-700/50 text-white rounded-2xl text-sm flex items-center justify-between shadow-sm animate-slide-up min-h-[44px]">
+        <div className="p-4 bg-zinc-900 border border-zinc-700/50 text-white rounded-2xl text-sm flex items-center justify-between shadow-sm animate-slide-up min-h-[44px] w-full max-w-md">
           <div className="flex items-center gap-2">
             <AlertCircle className="w-5 h-5 text-white flex-shrink-0" />
             <span>{error}</span>
@@ -201,91 +217,79 @@ export default function HomePageClient({ userProfile, backendUrl }: HomePageClie
         </div>
       )}
 
-      {/* ACTIVE EVENT CONTAINER */}
-      {userProfile && activeEvent ? (
-        <div className="glass-strong text-white rounded-3xl p-6 md:p-8 shadow-2xl space-y-6 relative overflow-hidden animate-slide-up">
-          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-zinc-800 pb-4">
-            <div className="flex items-center gap-2">
-              <span className="px-3 py-1 bg-zinc-800/50 border border-zinc-700/50 text-zinc-300 text-xs font-semibold rounded-full uppercase tracking-wider flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-white animate-pulse"></span>
-                Active Event
-              </span>
-              <span className="text-xs font-mono text-zinc-400 bg-black/40 px-2.5 py-1 rounded-md border border-zinc-800">
-                Code: {activeEvent.code}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => {
-                  if (!userProfile) {
-                    setError("Please sign in to scan and join an event.");
-                    return;
-                  }
-                  setShowScanner(true);
-                }}
-                className="px-3.5 py-1.5 bg-zinc-800/50 hover:bg-zinc-800 text-xs font-medium rounded-xl border border-zinc-700/50 transition-colors flex items-center gap-1.5 min-h-[44px]"
-              >
-                <QrCode className="w-3.5 h-3.5" /> Switch / Scan
-              </button>
+      {/* INITIAL LOADING STATE */}
+      {isInitialLoading && !activeEvent ? (
+        <div className="glass-strong border border-zinc-800 rounded-3xl p-10 text-center space-y-4 animate-slide-up w-full max-w-md flex flex-col items-center justify-center min-h-[250px]">
+          <Loader2 className="w-9 h-9 text-white animate-spin" />
+          <p className="text-sm font-medium text-zinc-400 animate-pulse">Loading Event...</p>
+        </div>
+      ) : userProfile && activeEvent ? (
+        /* ACTIVE EVENT CONTAINER */
+        <div className="glass-strong border border-zinc-800 text-white rounded-3xl p-8 shadow-2xl space-y-6 relative overflow-hidden animate-slide-up flex flex-col items-center text-center w-full max-w-md">
+          {/* Action button (Leave) if enabled by env */}
+          {!hideLeaveButton && (
+            <div className="absolute top-4 right-4 flex items-center gap-2">
               <button
                 onClick={handleLeaveEvent}
-                className="px-3 py-1.5 bg-black/50 hover:bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800 hover:border-zinc-700 text-xs font-medium rounded-xl transition-colors flex items-center gap-1.5 min-h-[44px]"
+                title="Leave Event"
+                className="p-2 bg-zinc-800/60 hover:bg-zinc-800 text-zinc-400 hover:text-white rounded-xl text-xs transition-colors border border-zinc-700/50"
               >
-                <LogOut className="w-3.5 h-3.5" /> Leave
+                <LogOut className="w-4 h-4" />
               </button>
             </div>
-          </div>
+          )}
 
-          <div className="space-y-3">
-            <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight">{activeEvent.title}</h2>
-            {activeEvent.description && (
-              <p className="text-zinc-400 text-sm max-w-2xl leading-relaxed">
-                {activeEvent.description}
-              </p>
-            )}
-          </div>
-
-          <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4 pt-2 text-xs text-zinc-300">
-            {activeEvent.location && (
-              <div className="flex items-center gap-2 bg-black/40 p-3 rounded-xl border border-zinc-800">
-                <MapPin className="w-4 h-4 text-zinc-500 flex-shrink-0" />
-                <div>
-                  <span className="text-zinc-500 block text-[10px] uppercase font-bold">Location</span>
-                  <span className="font-medium text-zinc-200">{activeEvent.location}</span>
-                </div>
+          {/* Event Image in Center */}
+          <div className="flex flex-col items-center justify-center pt-2">
+            {eventImageUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={eventImageUrl}
+                alt={activeEvent.title}
+                className="w-44 h-44 sm:w-56 sm:h-56 object-cover rounded-2xl border-2 border-zinc-700/80 shadow-2xl mx-auto"
+              />
+            ) : (
+              <div className="w-44 h-44 sm:w-56 sm:h-56 rounded-2xl bg-gradient-to-br from-zinc-800 to-zinc-900 border-2 border-zinc-700/80 flex flex-col items-center justify-center p-4 shadow-2xl mx-auto">
+                <Calendar className="w-16 h-16 text-zinc-400 mb-2" />
+                <span className="font-bold text-base text-zinc-200 line-clamp-2 px-2">
+                  {activeEvent.title}
+                </span>
               </div>
             )}
+          </div>
 
-            {activeEvent.startDate && (
-              <div className="flex items-center gap-2 bg-black/40 p-3 rounded-xl border border-zinc-800">
-                <Calendar className="w-4 h-4 text-zinc-500 flex-shrink-0" />
-                <div>
-                  <span className="text-zinc-500 block text-[10px] uppercase font-bold">Date</span>
-                  <span className="font-medium text-zinc-200">
-                    {new Date(activeEvent.startDate).toLocaleString()}
-                  </span>
+          {/* Logged in User Image and Name below */}
+          <div className="pt-6 border-t border-zinc-800/80 w-full max-w-sm flex flex-col items-center space-y-4">
+            <div className="flex items-center gap-3">
+              <Link href="/profile" className="relative group cursor-pointer" title="Edit Profile">
+                {userProfile.image ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={userProfile.image}
+                    alt={userProfile.name}
+                    className="w-14 h-14 rounded-full object-cover border-2 border-white/20 shadow-md group-hover:border-white/50 transition-all"
+                  />
+                ) : (
+                  <div className="w-14 h-14 rounded-full bg-zinc-800 border-2 border-white/20 text-white font-bold flex items-center justify-center text-lg shadow-md group-hover:border-white/50 transition-all">
+                    {(userProfile.name || "U").substring(0, 2).toUpperCase()}
+                  </div>
+                )}
+                {/* Edit icon overlay badge */}
+                <div className="absolute bottom-0 right-0 bg-white text-black p-0.5 rounded-full shadow border border-zinc-800 group-hover:scale-110 transition-transform">
+                  <Pencil className="w-2.5 h-2.5" />
                 </div>
-              </div>
-            )}
+              </Link>
 
-            <div className="flex items-center gap-2 bg-black/40 p-3 rounded-xl border border-zinc-800">
-              <Tag className="w-4 h-4 text-zinc-500 flex-shrink-0" />
-              <div>
-                <span className="text-zinc-500 block text-[10px] uppercase font-bold">QR View</span>
-                <Link
-                  href={`/events/${activeEvent.id}/qr`}
-                  className="font-medium text-zinc-300 hover:text-white underline flex items-center gap-1 min-h-[24px]"
-                >
-                  View QR Badge <ExternalLink className="w-3 h-3" />
-                </Link>
+              <div className="text-left">
+                <p className="font-bold text-base text-white">{userProfile.name}</p>
+                <p className="text-xs text-zinc-400">{userProfile.email}</p>
               </div>
             </div>
           </div>
         </div>
       ) : (
         /* HERO & QR SCANNER CONTAINER */
-        <div className="glass-strong border border-zinc-800 rounded-3xl p-6 md:p-10 text-center space-y-6 animate-slide-up">
+        <div className="glass-strong border border-zinc-800 rounded-3xl p-6 md:p-10 text-center space-y-6 animate-slide-up w-full max-w-md">
           <div className="max-w-xl mx-auto space-y-3">
             <div className="w-14 h-14 bg-zinc-900 text-white border border-zinc-800 rounded-2xl flex items-center justify-center mx-auto shadow-inner">
               <QrCode className="w-7 h-7" />
@@ -334,58 +338,6 @@ export default function HomePageClient({ userProfile, backendUrl }: HomePageClie
           )}
         </div>
       )}
-
-      {/* USER AUTH STATUS CARD */}
-      <div className="glass border border-zinc-800 p-6 rounded-2xl shadow-sm space-y-4 animate-slide-up">
-        <h3 className="text-base font-semibold border-b border-zinc-800 pb-3 text-white">User Profile Status</h3>
-
-        {userProfile ? (
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              {userProfile.image ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={userProfile.image}
-                  alt={userProfile.name}
-                  className="w-12 h-12 rounded-full object-cover border border-zinc-700"
-                />
-              ) : (
-                <div className="w-12 h-12 rounded-full bg-zinc-900 border border-zinc-800 text-white font-bold flex items-center justify-center text-sm">
-                  {(userProfile.name || "U").substring(0, 2)}
-                </div>
-              )}
-              <div>
-                <p className="font-bold text-sm text-white">{userProfile.name}</p>
-                <p className="text-xs text-zinc-400">{userProfile.email}</p>
-                <span className="inline-block mt-1 px-2 py-0.5 text-[10px] font-bold rounded bg-zinc-800 text-zinc-300">
-                  Signed In ({userProfile.role})
-                </span>
-              </div>
-            </div>
-
-            <div className="flex gap-2">
-              <Link href="/profile" className="border border-zinc-800 px-3.5 py-1.5 rounded-xl text-xs bg-zinc-900 hover:bg-zinc-800 text-zinc-300 flex items-center justify-center min-h-[44px]">
-                Edit Profile
-              </Link>
-              {userProfile.role === "admin" && (
-                <Link href="/admin" className="border border-zinc-700 px-3.5 py-1.5 rounded-xl text-xs bg-white text-black font-medium hover:bg-zinc-200 flex items-center justify-center min-h-[44px]">
-                  Admin Dashboard
-                </Link>
-              )}
-            </div>
-          </div>
-        ) : (
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div>
-              <p className="text-sm text-zinc-400 font-medium">You are currently logged out.</p>
-              <p className="text-xs text-zinc-500">Sign in is required to join events and scan QR codes.</p>
-            </div>
-            <Link href="/login" className="border border-zinc-700 px-4 py-2 rounded-xl text-xs font-medium bg-white text-black hover:bg-zinc-200 min-h-[44px] flex items-center justify-center">
-              Sign In
-            </Link>
-          </div>
-        )}
-      </div>
     </div>
   );
 }

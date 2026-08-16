@@ -260,20 +260,6 @@ export default function HypeMeterScreen() {
       )}
 
       <div className="relative z-10 w-full h-full max-w-7xl px-8 flex flex-col items-center justify-center flex-1">
-        {/* Header Section */}
-        {!isCompleted && (
-          <div className="text-center mb-16 space-y-4">
-            {meter.event?.title && (
-              <h2 className="text-2xl md:text-3xl font-bold tracking-widest uppercase text-zinc-500">
-                {meter.event.title}
-              </h2>
-            )}
-            <h1 className="text-6xl md:text-8xl font-black tracking-tight text-white drop-shadow-[0_0_30px_rgba(255,255,255,0.2)]">
-              {meter.title}
-            </h1>
-          </div>
-        )}
-
         {isCompleted ? (
           <div className="fixed inset-0 z-[150] bg-black flex items-center justify-center animate-[fadeIn_0.8s_ease-out]">
             {meter.videoUrl ? (
@@ -295,7 +281,10 @@ export default function HypeMeterScreen() {
           <div className="flex flex-col items-center">
             {/* Massive Circular Progress indicator */}
             <div className="relative w-[300px] h-[300px] md:w-[500px] md:h-[500px] flex items-center justify-center mb-12">
-              <svg className="w-full h-full -rotate-90 transform" viewBox="0 0 100 100">
+              {/* Soft background ambient glow */}
+              <div className="absolute inset-0 rounded-full bg-white/5 blur-3xl pointer-events-none" />
+
+              <svg className="w-full h-full -rotate-90 transform overflow-visible" viewBox="-15 -15 130 130">
                 {/* Background track */}
                 <circle
                   cx="50"
@@ -317,7 +306,7 @@ export default function HypeMeterScreen() {
                   strokeDasharray="283"
                   strokeDashoffset={283 - (283 * percentage) / 100}
                   className="transition-all duration-500 ease-out"
-                  style={{ filter: "drop-shadow(0 0 10px rgba(255,255,255,0.8))" }}
+                  style={{ filter: "drop-shadow(0 0 12px rgba(255,255,255,0.9))" }}
                 />
               </svg>
 

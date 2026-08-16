@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { Camera } from "lucide-react";
 
 interface UserProfile {
   id: string;
@@ -13,11 +14,16 @@ interface UserProfile {
 
 export default function ProfileForm({ user }: { user: UserProfile }) {
   const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [name, setName] = useState(user.name || "");
   const [image, setImage] = useState(user.image || "");
   const [isUploading, setIsUploading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -66,7 +72,9 @@ export default function ProfileForm({ user }: { user: UserProfile }) {
 
       setMessage({ type: "success", text: "Profile updated successfully!" });
       router.refresh();
-      setTimeout(() => setMessage(null), 3000);
+      setTimeout(() => {
+        router.push("/");
+      }, 800);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Something went wrong";
       setMessage({ type: "error", text: errorMessage });
@@ -89,21 +97,41 @@ export default function ProfileForm({ user }: { user: UserProfile }) {
         </div>
       )}
 
-      {/* Avatar */}
-      <div className="space-y-3">
-        <label className="block text-sm font-medium text-zinc-300">Avatar</label>
-        <div className="flex items-center gap-4">
+      {/* Bigger Centered Avatar with Edit Icon & Click to Upload */}
+      <div className="flex flex-col items-center justify-center space-y-2 pt-2">
+        <input
+          type="file"
+          ref={fileInputRef}
+          accept="image/*"
+          onChange={handleFileChange}
+          className="hidden"
+        />
+
+        <div
+          onClick={handleAvatarClick}
+          className="relative group cursor-pointer"
+          title="Click to update avatar"
+        >
           {image ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={image} alt="Avatar" className="w-16 h-16 rounded-full object-cover border border-zinc-700" />
+            <img
+              src={image}
+              alt="Avatar"
+              className="w-28 h-28 sm:w-32 sm:h-32 rounded-full object-cover border-4 border-zinc-700/80 group-hover:border-white transition-all shadow-xl"
+            />
           ) : (
-            <div className="w-16 h-16 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center font-bold text-white">
-              {(name || "U").substring(0, 2)}
+            <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-full bg-zinc-900 border-4 border-zinc-800 group-hover:border-white transition-all flex items-center justify-center font-bold text-white text-3xl shadow-xl">
+              {(name || "U").substring(0, 2).toUpperCase()}
             </div>
           )}
-          <input type="file" accept="image/*" onChange={handleFileChange} className="text-sm text-zinc-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-zinc-800 file:text-white hover:file:bg-zinc-700 min-h-[44px]" />
+
+          {/* Edit icon overlay */}
+          <div className="absolute bottom-1 right-1 bg-white text-black p-2 rounded-full shadow-lg border border-zinc-800 group-hover:scale-110 transition-transform">
+            <Camera className="w-4 h-4" />
+          </div>
         </div>
-        {isUploading && <p className="text-xs text-zinc-500">Uploading...</p>}
+
+        {isUploading && <p className="text-xs text-zinc-400 animate-pulse">Uploading image...</p>}
       </div>
 
       {/* Email */}
