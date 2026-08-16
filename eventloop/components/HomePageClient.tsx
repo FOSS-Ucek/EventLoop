@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import QRScanner from "@/components/QRScanner";
 import { QrCode, Calendar, MapPin, Tag, LogOut, CheckCircle2, AlertCircle, Sparkles, ExternalLink, LogIn } from "lucide-react";
+import HypeMeterParticipant from "@/components/HypeMeterParticipant";
 
 interface UserProfile {
   id: string;
@@ -251,6 +252,9 @@ export default function HomePageClient({ userProfile, backendUrl }: HomePageClie
               </div>
             </div>
           </div>
+          
+          {/* Hype Meter */}
+          <HypeMeterParticipant eventId={activeEvent.id} backendUrl={backendUrl} userProfile={userProfile} />
         </div>
       ) : (
         /* HERO & QR SCANNER CONTAINER */

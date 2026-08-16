@@ -3,6 +3,7 @@ const cors = require("cors");
 const healthRoutes = require("./routes/healthRoutes");
 const userRoutes = require("./routes/userRoutes");
 const eventRoutes = require("./routes/eventRoutes");
+const hypeMeterRoutes = require("./routes/hypeMeterRoutes");
 
 const app = express();
 
@@ -22,5 +23,6 @@ app.use(express.json({ limit: "5mb" }));
 app.use("/api", healthRoutes);
 app.use("/api", userRoutes);
 app.use("/api", eventRoutes);
+app.use("/api", hypeMeterRoutes);
 
 module.exports = app;
