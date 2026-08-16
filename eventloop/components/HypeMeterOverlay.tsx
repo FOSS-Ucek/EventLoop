@@ -1,29 +1,49 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import { useEvent } from "@/components/providers/EventProvider";
+import { useState, useCallback, memo } from "react";
+import { useEvent, SessionData } from "@/components/providers/EventProvider";
+import { Socket } from "socket.io-client";
 import { Zap } from "lucide-react";
 
-export default function HypeMeterOverlay() {
-  const { isHypeActive, hypeData, hypeCompleted, hypeStopping, socket, session } = useEvent();
+interface OverlayProps {
+  isHypeActive: boolean;
+  hypeId?: string;
+  hypeCompleted: boolean;
+  hypeStopping: boolean;
+  socket: Socket | null;
+  session: SessionData | null;
+}
+
+const HypeMeterOverlayContent = memo(function HypeMeterOverlayContent({
+  isHypeActive,
+  hypeId,
+  hypeCompleted,
+  hypeStopping,
+  socket,
+  session,
+}: OverlayProps) {
   const [isTapping, setIsTapping] = useState(false);
 
-  const handleTap = useCallback(() => {
-    if (!socket || !hypeData || hypeCompleted) return;
+  const handleTap = useCallback((e?: React.SyntheticEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    if (!socket || !hypeId || hypeCompleted) return;
 
     setIsTapping(true);
     setTimeout(() => setIsTapping(false), 80);
 
     socket.emit("hype:tap", {
-      hypeMeterId: hypeData.id,
+      hypeMeterId: hypeId,
       user: {
         name: session?.name || "Participant",
         image: session?.image || null,
       },
     });
-  }, [socket, hypeData, hypeCompleted, session]);
+  }, [socket, hypeId, hypeCompleted, session]);
 
-  if (!isHypeActive || !hypeData || session?.role === "admin") return null;
+  if (!isHypeActive || !hypeId || session?.role === "admin") return null;
 
   return (
     <div
@@ -74,5 +94,21 @@ export default function HypeMeterOverlay() {
       </div>
     </div>
   );
+});
+
+export default function HypeMeterOverlay() {
+  const { isHypeActive, hypeData, hypeCompleted, hypeStopping, socket, session } = useEvent();
+
+  return (
+    <HypeMeterOverlayContent
+      isHypeActive={isHypeActive}
+      hypeId={hypeData?.id}
+      hypeCompleted={hypeCompleted}
+      hypeStopping={hypeStopping}
+      socket={socket}
+      session={session}
+    />
+  );
 }
+
 

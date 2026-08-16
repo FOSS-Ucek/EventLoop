@@ -49,6 +49,9 @@ export default function HypeMeterScreen() {
 
   const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000";
 
+  const completedRef = useRef<boolean>(false);
+  const lastNotifTimeRef = useRef<number>(0);
+
   useEffect(() => {
     if (!id) return;
 
@@ -63,6 +66,9 @@ export default function HypeMeterScreen() {
 
         if (res.ok && data.success) {
           setMeter(data.hypeMeter);
+          if (data.hypeMeter.status === "completed") {
+            completedRef.current = true;
+          }
           if (newSocket.connected) {
             newSocket.emit("hype:join-room", { eventId: data.hypeMeter.eventId });
           } else {
@@ -89,35 +95,46 @@ export default function HypeMeterScreen() {
       tapper?: { name: string; image: string | null } | null;
     }) => {
       if (payload.hypeMeterId === id) {
-        setMeter((prev) =>
-          prev ? { ...prev, currentTaps: payload.currentScore, tapsNeeded: payload.tapsNeeded ?? prev.tapsNeeded } : prev
-        );
+        setMeter((prev) => {
+          if (!prev) return prev;
+          const tapsNeeded = payload.tapsNeeded ?? prev.tapsNeeded;
+          const cappedTaps = Math.min(payload.currentScore, tapsNeeded);
+          return { ...prev, currentTaps: cappedTaps, tapsNeeded };
+        });
 
         if (payload.tapper) {
-          const notif: TapNotification = {
-            id: Math.random().toString(36).substring(2, 9),
-            name: payload.tapper.name || "Participant",
-            image: payload.tapper.image,
-            time: Date.now(),
-          };
+          const now = Date.now();
+          if (now - lastNotifTimeRef.current > 80) {
+            lastNotifTimeRef.current = now;
+            const notif: TapNotification = {
+              id: Math.random().toString(36).substring(2, 9),
+              name: payload.tapper.name || "Participant",
+              image: payload.tapper.image,
+              time: now,
+            };
 
-          setTapNotifications((prev) => [notif, ...prev].slice(0, 5));
+            setTapNotifications((prev) => [notif, ...prev].slice(0, 5));
+          }
         }
       }
     };
 
     const handleHypeCompleted = (payload: { hypeMeterId: string; videoUrl?: string; finalScore?: number }) => {
       if (!payload.hypeMeterId || payload.hypeMeterId === id) {
+        if (completedRef.current) return;
+        completedRef.current = true;
+
         setShowBlackout(true);
         setTimeout(() => {
           setMeter((prev) => (prev ? { ...prev, status: "completed", videoUrl: payload.videoUrl || prev.videoUrl, currentTaps: payload.finalScore || prev.currentTaps } : prev));
           setShowBlackout(false);
-        }, 1200);
+        }, 800);
       }
     };
 
     const handleHypeStarted = (payload: { hypeMeter: any; initialScore?: number; startedAt?: string }) => {
       if (payload.hypeMeter?.id === id) {
+        completedRef.current = false;
         setMeter((prev) => prev ? {
           ...prev,
           id: payload.hypeMeter.id,
@@ -182,7 +199,7 @@ export default function HypeMeterScreen() {
   }
 
   const percentage = Math.min(100, Math.round((meter.currentTaps / meter.tapsNeeded) * 100));
-  const isCompleted = meter.status === "completed" || percentage >= 100;
+  const isCompleted = meter.status === "completed";
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
