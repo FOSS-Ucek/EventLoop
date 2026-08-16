@@ -14,7 +14,6 @@ interface UserProfile {
 export default function ProfileForm({ user }: { user: UserProfile }) {
   const router = useRouter();
   const [name, setName] = useState(user.name || "");
-  const [role, setRole] = useState(user.role);
   const [image, setImage] = useState(user.image || "");
   const [isUploading, setIsUploading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -56,7 +55,7 @@ export default function ProfileForm({ user }: { user: UserProfile }) {
       const res = await fetch(`${backendUrl}/api/user/update`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: user.id, email: user.email, name, image, role }),
+        body: JSON.stringify({ id: user.id, email: user.email, name, image }),
       });
 
       const data = await res.json();
@@ -77,13 +76,13 @@ export default function ProfileForm({ user }: { user: UserProfile }) {
   };
 
   return (
-    <form onSubmit={handleSave} className="space-y-4">
+    <form onSubmit={handleSave} className="space-y-6">
       {message && (
         <div
-          className={`p-3 text-sm rounded ${
+          className={`p-3 text-sm rounded-lg border min-h-[44px] flex items-center ${
             message.type === "success"
-              ? "bg-green-100 text-green-800"
-              : "bg-red-100 text-red-800"
+              ? "bg-zinc-900 border-zinc-700 text-white"
+              : "bg-black border-zinc-700 text-zinc-300"
           }`}
         >
           {message.text}
@@ -91,66 +90,54 @@ export default function ProfileForm({ user }: { user: UserProfile }) {
       )}
 
       {/* Avatar */}
-      <div className="space-y-2">
-        <label className="block text-sm font-medium">Avatar</label>
+      <div className="space-y-3">
+        <label className="block text-sm font-medium text-zinc-300">Avatar</label>
         <div className="flex items-center gap-4">
           {image ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={image} alt="Avatar" className="w-16 h-16 rounded-full object-cover border" />
+            <img src={image} alt="Avatar" className="w-16 h-16 rounded-full object-cover border border-zinc-700" />
           ) : (
-            <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center font-bold">
+            <div className="w-16 h-16 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center font-bold text-white">
               {(name || "U").substring(0, 2)}
             </div>
           )}
-          <input type="file" accept="image/*" onChange={handleFileChange} className="text-sm" />
+          <input type="file" accept="image/*" onChange={handleFileChange} className="text-sm text-zinc-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-zinc-800 file:text-white hover:file:bg-zinc-700 min-h-[44px]" />
         </div>
-        {isUploading && <p className="text-xs text-gray-500">Uploading...</p>}
+        {isUploading && <p className="text-xs text-zinc-500">Uploading...</p>}
       </div>
 
       {/* Email */}
-      <div>
-        <label className="block text-sm font-medium">Email</label>
+      <div className="space-y-1">
+        <label className="block text-sm font-medium text-zinc-300">Email</label>
         <input
           type="email"
           disabled
           value={user.email || ""}
-          className="w-full border p-2 rounded bg-gray-100 text-gray-600 text-sm"
+          className="w-full border border-zinc-800 p-3 rounded-xl bg-black text-zinc-500 text-sm min-h-[44px] cursor-not-allowed"
         />
       </div>
 
       {/* Name */}
-      <div>
-        <label className="block text-sm font-medium">Display Name</label>
+      <div className="space-y-1">
+        <label className="block text-sm font-medium text-zinc-300">Display Name</label>
         <input
           type="text"
           required
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="w-full border p-2 rounded text-sm dark:bg-zinc-800"
+          className="w-full border border-zinc-800 p-3 rounded-xl text-sm bg-black text-white focus:outline-none focus:border-zinc-500 min-h-[44px]"
         />
       </div>
 
-      {/* Role */}
-      <div>
-        <label className="block text-sm font-medium">Role</label>
-        <select
-          value={role}
-          onChange={(e) => setRole(e.target.value)}
-          className="w-full border p-2 rounded text-sm dark:bg-zinc-800"
+      <div className="pt-4">
+        <button
+          type="submit"
+          disabled={isSaving || isUploading}
+          className="w-full bg-white text-black p-3 rounded-xl text-sm font-medium disabled:opacity-50 hover:bg-zinc-200 transition-colors min-h-[44px]"
         >
-          <option value="user">User</option>
-          <option value="admin">Admin</option>
-        </select>
+          {isSaving ? "Saving..." : "Save Profile"}
+        </button>
       </div>
-
-      <button
-        type="submit"
-        disabled={isSaving || isUploading}
-        className="w-full bg-blue-600 text-white p-2 rounded text-sm font-medium disabled:opacity-50"
-      >
-        {isSaving ? "Saving..." : "Save Profile"}
-      </button>
     </form>
   );
 }
-

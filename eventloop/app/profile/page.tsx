@@ -37,12 +37,11 @@ export default async function ProfilePage() {
   };
 
   return (
-    <div className="p-6 max-w-2xl mx-auto space-y-6">
+    <div className="p-6 max-w-2xl mx-auto space-y-6 text-white w-full">
       <h1 className="text-2xl font-bold">Profile Settings</h1>
-      <div className="border p-6 rounded bg-white dark:bg-zinc-900">
+      <div className="glass border border-zinc-800 p-6 rounded-2xl shadow-sm">
         <ProfileForm user={userProfile} />
       </div>
     </div>
   );
 }
-

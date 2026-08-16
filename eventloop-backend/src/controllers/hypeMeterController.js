@@ -119,10 +119,30 @@ const activateHypeMeter = async (req, res) => {
   }
 
   try {
+    // Reset all other active meters for the same event to pending first
+    const meterToActivate = await prisma.hypeMeter.findUnique({ where: { id } });
+    if (meterToActivate) {
+      await prisma.hypeMeter.updateMany({
+        where: { eventId: meterToActivate.eventId, status: "active" },
+        data: { status: "pending" },
+      });
+    }
+
     const updated = await prisma.hypeMeter.update({
       where: { id },
-      data: { status: "active", currentTaps: 0 },
+      data: { status: "active", currentTaps: 0, startedAt: new Date() },
+      include: { event: true },
     });
+
+    const io = req.app.get("io");
+    if (io) {
+      io.to(`event:${updated.eventId}`).emit("HYPE_METER_START", {
+        startedAt: updated.startedAt,
+        initialScore: 0,
+        hypeMeter: updated,
+      });
+    }
+
     console.log(`Activated hype meter: ${id}`);
     res.json({ success: true, hypeMeter: updated });
   } catch (error) {
@@ -144,11 +164,55 @@ const resetHypeMeter = async (req, res) => {
       where: { id },
       data: { status: "pending", currentTaps: 0 },
     });
+
+    const io = req.app.get("io");
+    if (io) {
+      io.to(`event:${updated.eventId}`).emit("HYPE_METER_STOP", {
+        finalScore: 0,
+        hypeMeterId: updated.id,
+      });
+    }
+
     console.log(`Reset hype meter: ${id}`);
     res.json({ success: true, hypeMeter: updated });
   } catch (error) {
     console.error("❌ Reset hype meter error:", error);
     res.status(500).json({ success: false, error: "Failed to reset hype meter" });
+  }
+};
+
+// 7. Stop Hype Meter (Admin)
+const stopHypeMeter = async (req, res) => {
+  const { id } = req.params;
+
+  if (!isValidObjectId(id)) {
+    return res.status(400).json({ success: false, error: "Invalid Hype Meter ID" });
+  }
+
+  try {
+    const meter = await prisma.hypeMeter.findUnique({ where: { id } });
+    if (!meter) {
+      return res.status(404).json({ success: false, error: "Hype meter not found" });
+    }
+
+    const updated = await prisma.hypeMeter.update({
+      where: { id },
+      data: { status: "stopped" },
+    });
+
+    const io = req.app.get("io");
+    if (io) {
+      io.to(`event:${updated.eventId}`).emit("HYPE_METER_STOP", {
+        finalScore: updated.currentTaps,
+        hypeMeterId: updated.id,
+      });
+    }
+
+    console.log(`Stopped hype meter: ${id}`);
+    res.json({ success: true, hypeMeter: updated });
+  } catch (error) {
+    console.error("❌ Stop hype meter error:", error);
+    res.status(500).json({ success: false, error: "Failed to stop hype meter" });
   }
 };
 
@@ -159,4 +223,5 @@ module.exports = {
   deleteHypeMeter,
   activateHypeMeter,
   resetHypeMeter,
+  stopHypeMeter,
 };

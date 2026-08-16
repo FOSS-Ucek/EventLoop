@@ -37,9 +37,8 @@ export default async function Home() {
   const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000";
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-6">
-      <h1 className="text-2xl font-bold">EventLoop App</h1>
-
+    <div className="flex-1 flex flex-col p-6 max-w-4xl mx-auto space-y-6 w-full">
+      <h1 className="text-2xl font-bold text-white">EventLoop App</h1>
       <HomePageClient userProfile={userProfile} backendUrl={backendUrl} />
     </div>
   );

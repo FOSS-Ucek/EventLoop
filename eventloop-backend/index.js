@@ -15,6 +15,8 @@ const io = new Server(server, {
   },
 });
 
+app.set("io", io);
+
 const prisma = require("./src/config/prisma");
 
 io.on("connection", (socket) => {
@@ -42,12 +44,24 @@ io.on("connection", (socket) => {
   socket.on("hype:activate", async (data) => {
     const { hypeMeterId } = data;
     try {
+      const meterToActivate = await prisma.hypeMeter.findUnique({ where: { id: hypeMeterId } });
+      if (meterToActivate) {
+        await prisma.hypeMeter.updateMany({
+          where: { eventId: meterToActivate.eventId, status: "active" },
+          data: { status: "pending" },
+        });
+      }
+
       const meter = await prisma.hypeMeter.update({
         where: { id: hypeMeterId },
-        data: { status: "active", currentTaps: 0 },
+        data: { status: "active", currentTaps: 0, startedAt: new Date() },
         include: { event: true },
       });
-      io.to(`event:${meter.eventId}`).emit("hype:started", { hypeMeter: meter });
+      io.to(`event:${meter.eventId}`).emit("HYPE_METER_START", {
+        startedAt: meter.startedAt,
+        initialScore: 0,
+        hypeMeter: meter
+      });
       console.log(`🔥 Hype meter activated: ${meter.title} for event ${meter.event.title}`);
     } catch (err) {
       console.error("❌ hype:activate error:", err);
@@ -72,11 +86,10 @@ io.on("connection", (socket) => {
 
       const percentage = Math.min(100, Math.round((updated.currentTaps / updated.tapsNeeded) * 100));
 
-      io.to(`event:${updated.eventId}`).emit("hype:update", {
-        hypeMeterId: updated.id,
-        currentTaps: updated.currentTaps,
+      io.to(`event:${updated.eventId}`).emit("HYPE_METER_UPDATE", {
+        currentScore: updated.currentTaps,
         tapsNeeded: updated.tapsNeeded,
-        percentage,
+        hypeMeterId: updated.id,
         tapper: user ? {
           name: user.name || "Anonymous",
           image: user.image || null,
@@ -89,7 +102,8 @@ io.on("connection", (socket) => {
           where: { id: hypeMeterId },
           data: { status: "completed" },
         });
-        io.to(`event:${updated.eventId}`).emit("hype:completed", {
+        io.to(`event:${updated.eventId}`).emit("HYPE_METER_STOP", {
+          finalScore: updated.currentTaps,
           hypeMeterId: updated.id,
           videoUrl: updated.videoUrl,
         });
@@ -97,6 +111,28 @@ io.on("connection", (socket) => {
       }
     } catch (err) {
       console.error("❌ hype:tap error:", err);
+    }
+  });
+
+  // Admin stops a hype meter
+  socket.on("hype:stop", async (data) => {
+    const { hypeMeterId } = data;
+    try {
+      const meter = await prisma.hypeMeter.findUnique({ where: { id: hypeMeterId } });
+      if (!meter || meter.status !== "active") return;
+
+      const updated = await prisma.hypeMeter.update({
+        where: { id: hypeMeterId },
+        data: { status: "stopped" },
+      });
+
+      io.to(`event:${updated.eventId}`).emit("HYPE_METER_STOP", {
+        finalScore: updated.currentTaps,
+        hypeMeterId: updated.id,
+      });
+      console.log(`🛑 Hype meter stopped by admin: ${meter.title}`);
+    } catch (err) {
+      console.error("❌ hype:stop error:", err);
     }
   });
 

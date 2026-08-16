@@ -45,14 +45,14 @@ export default async function EventQRPage({
 
   if (!event) {
     return (
-      <div className="p-8 max-w-lg mx-auto text-center space-y-4">
-        <h1 className="text-2xl font-bold text-red-600">Event Not Found</h1>
-        <p className="text-sm text-gray-600 dark:text-gray-400">
+      <div className="p-8 max-w-lg mx-auto text-center space-y-4 text-white">
+        <h1 className="text-2xl font-bold">Event Not Found</h1>
+        <p className="text-sm text-zinc-400">
           The requested event could not be found or may have been deleted.
         </p>
         <Link
           href="/admin"
-          className="inline-flex items-center gap-2 border px-4 py-2 rounded-lg text-sm bg-gray-50 dark:bg-zinc-800 hover:bg-gray-100"
+          className="inline-flex items-center justify-center gap-2 border border-zinc-800 px-4 py-2 rounded-lg text-sm bg-zinc-900 hover:bg-zinc-800 min-h-[44px]"
         >
           <ArrowLeft className="w-4 h-4" /> Return to Admin
         </Link>
@@ -61,17 +61,17 @@ export default async function EventQRPage({
   }
 
   return (
-    <div className="p-6 max-w-3xl mx-auto space-y-8">
+    <div className="p-6 max-w-3xl mx-auto space-y-8 text-white w-full">
       {/* Navigation Header */}
-      <div className="flex items-center justify-between border-b pb-4">
+      <div className="flex items-center justify-between border-b border-zinc-800 pb-4">
         <Link
           href="/admin"
-          className="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-indigo-600 transition-colors"
+          className="inline-flex items-center justify-center gap-2 text-sm text-zinc-400 hover:text-white transition-colors min-h-[44px] pr-2"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to Admin Dashboard
         </Link>
-        <span className="text-xs px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-medium">
+        <span className="text-xs px-2.5 py-1 rounded-full bg-zinc-900 border border-zinc-800 text-white font-medium">
           Status: {event.status}
         </span>
       </div>
@@ -79,49 +79,49 @@ export default async function EventQRPage({
       {/* Main Container */}
       <div className="grid md:grid-cols-2 gap-8 items-start">
         {/* Left Column: Event Metadata */}
-        <div className="space-y-6 bg-white dark:bg-zinc-900 border rounded-2xl p-6 shadow-sm">
+        <div className="space-y-6 glass border border-zinc-800 rounded-2xl p-6 shadow-sm">
           <div>
-            <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 tracking-wider uppercase">
+            <span className="text-xs font-semibold text-zinc-500 tracking-wider uppercase">
               Event QR Code
             </span>
-            <h1 className="text-2xl font-bold mt-1 text-gray-900 dark:text-white">
+            <h1 className="text-2xl font-bold mt-1 text-white">
               {event.title}
             </h1>
           </div>
 
           {event.description && (
-            <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+            <p className="text-sm text-zinc-400 leading-relaxed">
               {event.description}
             </p>
           )}
 
-          <div className="space-y-3 pt-2 text-sm border-t border-gray-100 dark:border-zinc-800">
-            <div className="flex items-center gap-3 text-gray-600 dark:text-gray-400">
-              <Tag className="w-4 h-4 text-indigo-500 flex-shrink-0" />
+          <div className="space-y-3 pt-2 text-sm border-t border-zinc-800">
+            <div className="flex items-center gap-3 text-zinc-400 pt-3">
+              <Tag className="w-4 h-4 text-zinc-500 flex-shrink-0" />
               <div>
-                <span className="text-xs text-gray-400 block">Event Access Code</span>
-                <span className="font-mono font-semibold text-gray-900 dark:text-gray-100">
+                <span className="text-xs text-zinc-500 block">Event Access Code</span>
+                <span className="font-mono font-semibold text-white">
                   {event.code}
                 </span>
               </div>
             </div>
 
             {event.location && (
-              <div className="flex items-center gap-3 text-gray-600 dark:text-gray-400">
-                <MapPin className="w-4 h-4 text-indigo-500 flex-shrink-0" />
+              <div className="flex items-center gap-3 text-zinc-400">
+                <MapPin className="w-4 h-4 text-zinc-500 flex-shrink-0" />
                 <div>
-                  <span className="text-xs text-gray-400 block">Location</span>
-                  <span>{event.location}</span>
+                  <span className="text-xs text-zinc-500 block">Location</span>
+                  <span className="text-white">{event.location}</span>
                 </div>
               </div>
             )}
 
             {event.startDate && (
-              <div className="flex items-center gap-3 text-gray-600 dark:text-gray-400">
-                <Calendar className="w-4 h-4 text-indigo-500 flex-shrink-0" />
+              <div className="flex items-center gap-3 text-zinc-400">
+                <Calendar className="w-4 h-4 text-zinc-500 flex-shrink-0" />
                 <div>
-                  <span className="text-xs text-gray-400 block">Start Date</span>
-                  <span>{new Date(event.startDate).toLocaleString()}</span>
+                  <span className="text-xs text-zinc-500 block">Start Date</span>
+                  <span className="text-white">{new Date(event.startDate).toLocaleString()}</span>
                 </div>
               </div>
             )}
@@ -129,8 +129,8 @@ export default async function EventQRPage({
         </div>
 
         {/* Right Column: Interactive QR Code Card */}
-        <div className="bg-white dark:bg-zinc-900 border rounded-2xl p-6 shadow-sm flex flex-col items-center">
-          <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">
+        <div className="glass border border-zinc-800 rounded-2xl p-6 shadow-sm flex flex-col items-center">
+          <h2 className="text-sm font-semibold text-zinc-300 mb-4">
             Scan to Join Event
           </h2>
           <QRCodeDisplay

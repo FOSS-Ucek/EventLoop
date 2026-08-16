@@ -67,7 +67,7 @@ const getEvent = async (req, res) => {
 
 // 3. Create Event (Admin)
 const createEvent = async (req, res) => {
-  const { title, description, location, startDate, endDate, code, createdBy } = req.body;
+  const { title, description, location, startDate, endDate, code, createdBy, logoUrl, accentColor } = req.body;
 
   if (!title || !title.trim()) {
     return res.status(400).json({ success: false, error: "Event title is required" });
@@ -100,6 +100,8 @@ const createEvent = async (req, res) => {
         code: eventCode,
         createdBy: createdBy && isValidObjectId(createdBy) ? createdBy : null,
         status: "active",
+        logoUrl: logoUrl ? logoUrl.trim() : null,
+        accentColor: accentColor ? accentColor.trim() : "#ffffff",
       },
     });
 
@@ -211,6 +213,70 @@ const deleteEvent = async (req, res) => {
   }
 };
 
+// 7. Get Event State
+const getEventState = async (req, res) => {
+  const { eventId } = req.query;
+
+  if (!eventId || !isValidObjectId(eventId)) {
+    return res.status(400).json({ success: false, error: "Valid Event ID is required" });
+  }
+
+  try {
+    const event = await prisma.event.findUnique({
+      where: { id: eventId },
+      include: {
+        hypeMeters: {
+          where: { status: "active" },
+          take: 1
+        }
+      }
+    });
+
+    if (!event) {
+      return res.status(404).json({ success: false, error: "Event not found" });
+    }
+
+    const activeHypeMeter = event.hypeMeters[0];
+
+    const response = {
+      success: true,
+      config: {
+        eventId: event.id,
+        eventName: event.title,
+        brand: {
+          logoUrl: event.logoUrl,
+          accentColor: event.accentColor
+        },
+        hypeMeter: {
+          isActive: false,
+          currentScore: 0,
+          startedAt: null,
+          meter: null
+        }
+      }
+    };
+
+    if (activeHypeMeter) {
+      response.config.hypeMeter = {
+        isActive: true,
+        currentScore: activeHypeMeter.currentTaps,
+        startedAt: activeHypeMeter.startedAt,
+        meter: {
+          id: activeHypeMeter.id,
+          title: activeHypeMeter.title,
+          tapsNeeded: activeHypeMeter.tapsNeeded,
+          videoUrl: activeHypeMeter.videoUrl
+        }
+      };
+    }
+
+    res.json(response);
+  } catch (error) {
+    console.error("❌ Get event state error:", error);
+    res.status(500).json({ success: false, error: "Failed to fetch event state" });
+  }
+};
+
 module.exports = {
   getEvents,
   getEvent,
@@ -218,4 +284,5 @@ module.exports = {
   joinEvent,
   getUserJoinedEvents,
   deleteEvent,
+  getEventState,
 };

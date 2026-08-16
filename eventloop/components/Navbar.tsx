@@ -1,83 +1,99 @@
+"use client";
+
 import Link from "next/link";
-import { auth, signOut } from "@/auth";
+import { usePathname } from "next/navigation";
+import { useEvent } from "@/components/providers/EventProvider";
+import { handleSignOut } from "@/app/actions";
+import { Home, User, Shield, LogOut, LogIn } from "lucide-react";
 
-export default async function Navbar() {
-  const session = await auth();
-  let dbUser = null;
+interface NavbarProps {
+  session: { userId: string; role: string; name: string; image: string } | null;
+}
 
-  if (session?.user) {
-    try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000";
-      const userQuery = session.user.id
-        ? `id=${session.user.id}`
-        : `email=${encodeURIComponent(session.user.email || "")}`;
+export default function Navbar({ session }: NavbarProps) {
+  const { eventConfig } = useEvent();
+  const pathname = usePathname();
 
-      const res = await fetch(`${backendUrl}/api/user?${userQuery}`, { cache: "no-store" });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.success) dbUser = data.user;
-      }
-    } catch (error) {
-      console.error("Failed to fetch user profile in Navbar:", error);
-    }
-  }
-
-  const userProfile = session?.user
-    ? {
-        name: dbUser?.name ?? session.user.name ?? "User",
-        role: dbUser?.role ?? session.user.role ?? "user",
-        image: dbUser?.image ?? session.user.image ?? "",
-      }
-    : null;
+  // Hide Navbar completely on full-screen hype display route
+  if (pathname?.startsWith("/hype/")) return null;
 
   return (
-    <nav className="border-b p-4 flex items-center justify-between bg-white dark:bg-zinc-900">
-      <div className="flex items-center gap-4">
-        <Link href="/" className="font-bold text-lg">
+    <nav
+      className="sticky top-0 z-50 flex items-center justify-between px-4 h-14 border-b bg-black/80 backdrop-blur-xl"
+      style={{ minHeight: 'var(--nav-height)' }}
+    >
+      {/* Left: Brand */}
+      <div className="flex items-center gap-3">
+        {eventConfig?.brand?.logoUrl && (
+          <img
+            src={eventConfig.brand.logoUrl}
+            alt="Event Logo"
+            className="h-7 w-7 rounded object-contain"
+          />
+        )}
+        <Link href="/" className="font-bold text-base tracking-tight text-white">
           EventLoop
         </Link>
-        <Link href="/" className="text-sm underline">
-          Home
+      </div>
+
+      {/* Center: Nav Links */}
+      <div className="flex items-center gap-1">
+        <Link
+          href="/"
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm text-zinc-400 hover:text-white hover:bg-white/5 transition-colors min-h-[44px]"
+        >
+          <Home className="w-4 h-4" />
+          <span className="hidden sm:inline">Home</span>
         </Link>
         {session && (
-          <Link href="/profile" className="text-sm underline">
-            Profile
+          <Link
+            href="/profile"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm text-zinc-400 hover:text-white hover:bg-white/5 transition-colors min-h-[44px]"
+          >
+            <User className="w-4 h-4" />
+            <span className="hidden sm:inline">Profile</span>
           </Link>
         )}
-        {userProfile?.role === "admin" && (
-          <Link href="/admin" className="text-sm underline font-semibold">
-            Admin
+        {session?.role === "admin" && (
+          <Link
+            href="/admin"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm text-zinc-400 hover:text-white hover:bg-white/5 transition-colors min-h-[44px]"
+          >
+            <Shield className="w-4 h-4" />
+            <span className="hidden sm:inline">Admin</span>
           </Link>
         )}
       </div>
 
-      <div className="flex items-center gap-3 text-sm">
-        {userProfile ? (
+      {/* Right: User */}
+      <div className="flex items-center gap-2">
+        {session ? (
           <>
-            {userProfile.image && (
-              // eslint-disable-next-line @next/next/no-img-element
+            {session.image && (
               <img
-                src={userProfile.image}
-                alt="Avatar"
-                className="w-8 h-8 rounded-full object-cover border"
+                src={session.image}
+                alt={session.name}
+                className="w-8 h-8 rounded-full object-cover border border-zinc-800"
               />
             )}
-            <span>
-              {userProfile.name} ({userProfile.role})
+            <span className="text-sm text-zinc-400 hidden sm:inline max-w-[120px] truncate">
+              {session.name}
             </span>
-            <form
-              action={async () => {
-                "use server";
-                await signOut({ redirectTo: "/" });
-              }}
-            >
-              <button type="submit" className="border px-3 py-1 rounded text-xs">
-                Sign Out
+            <form action={handleSignOut}>
+              <button
+                type="submit"
+                className="flex items-center gap-1 px-3 py-2 rounded-lg text-sm text-zinc-500 hover:text-white hover:bg-white/5 transition-colors min-h-[44px]"
+              >
+                <LogOut className="w-4 h-4" />
               </button>
             </form>
           </>
         ) : (
-          <Link href="/login" className="border px-3 py-1 rounded text-xs">
+          <Link
+            href="/login"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium text-black bg-white hover:bg-zinc-200 transition-colors min-h-[44px]"
+          >
+            <LogIn className="w-4 h-4" />
             Sign In
           </Link>
         )}
@@ -85,4 +101,3 @@ export default async function Navbar() {
     </nav>
   );
 }
-

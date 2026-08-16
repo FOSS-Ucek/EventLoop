@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { Camera, QrCode, X, RefreshCw, Sparkles, AlertCircle } from "lucide-react";
+import { Camera, QrCode, X, AlertCircle } from "lucide-react";
 
 interface QRScannerProps {
   onScanSuccess: (code: string) => void;
@@ -128,15 +128,15 @@ export default function QRScanner({ onScanSuccess, onCancel }: QRScannerProps) {
   };
 
   return (
-    <div className="w-full max-w-md mx-auto space-y-5 border rounded-2xl p-6 bg-white dark:bg-zinc-900 shadow-xl">
+    <div className="w-full max-w-md mx-auto space-y-5 border border-zinc-800 rounded-2xl p-6 bg-black shadow-xl">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="p-2 bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 rounded-lg">
+          <div className="p-2 bg-zinc-900 border border-zinc-800 text-white rounded-lg">
             <QrCode className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="font-semibold text-base">Scan Event QR</h3>
-            <p className="text-xs text-gray-500">Scan or enter event code to join</p>
+            <h3 className="font-semibold text-base text-white">Scan Event QR</h3>
+            <p className="text-xs text-zinc-400">Scan or enter event code to join</p>
           </div>
         </div>
         {onCancel && (
@@ -145,7 +145,7 @@ export default function QRScanner({ onScanSuccess, onCancel }: QRScannerProps) {
               stopCameraScanner();
               onCancel();
             }}
-            className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 dark:hover:bg-zinc-800"
+            className="p-1 text-zinc-500 hover:text-white rounded-full hover:bg-zinc-800 min-h-[44px] min-w-[44px] flex items-center justify-center"
           >
             <X className="w-5 h-5" />
           </button>
@@ -153,30 +153,30 @@ export default function QRScanner({ onScanSuccess, onCancel }: QRScannerProps) {
       </div>
 
       {error && (
-        <div className="p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 rounded-xl text-xs flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 flex-shrink-0" />
+        <div className="p-3 bg-zinc-900 border border-zinc-800 text-white rounded-xl text-xs flex items-center gap-2 min-h-[44px]">
+          <AlertCircle className="w-4 h-4 flex-shrink-0 text-zinc-400" />
           <span>{error}</span>
         </div>
       )}
 
       {/* Camera scanner viewport */}
-      <div className="relative overflow-hidden rounded-xl bg-gray-100 dark:bg-zinc-800 min-h-[260px] flex items-center justify-center">
+      <div className="relative overflow-hidden rounded-xl bg-zinc-900 border border-zinc-800 min-h-[260px] flex items-center justify-center">
         <div id="qr-reader" className="w-full h-full"></div>
 
         {!scannerActive && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-gray-50 dark:bg-zinc-900 space-y-4">
-            <div className="w-16 h-16 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400 animate-pulse">
+          <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-black space-y-4">
+            <div className="w-16 h-16 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center text-white">
               <Camera className="w-8 h-8" />
             </div>
             <div>
-              <p className="font-medium text-sm">Ready to scan QR Code</p>
-              <p className="text-xs text-gray-500 mt-1 max-w-xs">
+              <p className="font-medium text-sm text-white">Ready to scan QR Code</p>
+              <p className="text-xs text-zinc-400 mt-1 max-w-xs">
                 Click below to turn on your camera and scan the event QR code
               </p>
             </div>
             <button
               onClick={startCameraScanner}
-              className="py-2.5 px-5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-xl shadow-md flex items-center gap-2 transition-all hover:scale-105"
+              className="py-2.5 px-5 bg-white hover:bg-zinc-200 text-black text-sm font-medium rounded-xl shadow-md flex items-center gap-2 transition-all hover:scale-105 min-h-[44px]"
             >
               <Camera className="w-4 h-4" />
               Open Camera Scanner
@@ -187,7 +187,7 @@ export default function QRScanner({ onScanSuccess, onCancel }: QRScannerProps) {
         {scannerActive && (
           <button
             onClick={stopCameraScanner}
-            className="absolute top-2 right-2 z-10 p-2 bg-black/60 text-white rounded-full hover:bg-black/80 text-xs flex items-center gap-1 backdrop-blur-sm"
+            className="absolute top-2 right-2 z-10 p-2 bg-black/60 border border-zinc-800 text-white rounded-xl hover:bg-black/80 text-xs flex items-center gap-1 backdrop-blur-sm min-h-[44px]"
           >
             <X className="w-4 h-4" />
             Stop Camera
@@ -196,13 +196,13 @@ export default function QRScanner({ onScanSuccess, onCancel }: QRScannerProps) {
       </div>
 
       <div className="relative flex items-center justify-center">
-        <div className="border-t w-full border-gray-200 dark:border-zinc-800"></div>
-        <span className="bg-white dark:bg-zinc-900 px-3 text-xs text-gray-400 font-medium absolute">OR</span>
+        <div className="border-t w-full border-zinc-800"></div>
+        <span className="bg-black px-3 text-xs text-zinc-500 font-medium absolute">OR</span>
       </div>
 
       {/* Manual code input form */}
       <form onSubmit={handleManualSubmit} className="space-y-3">
-        <label htmlFor="manual-code-input" className="block text-xs font-medium text-gray-600 dark:text-gray-400">
+        <label htmlFor="manual-code-input" className="block text-xs font-medium text-zinc-400">
           Enter Event Code Manually
         </label>
         <div className="flex gap-2">
@@ -212,12 +212,12 @@ export default function QRScanner({ onScanSuccess, onCancel }: QRScannerProps) {
             placeholder="e.g. tech-conf-2026 or Event ID"
             value={manualCode}
             onChange={(e) => setManualCode(e.target.value)}
-            className="flex-1 px-3.5 py-2 border rounded-xl text-sm bg-gray-50 dark:bg-zinc-800 border-gray-300 dark:border-zinc-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="flex-1 px-3.5 py-2 border rounded-xl text-sm bg-zinc-900 border-zinc-800 text-white focus:outline-none focus:border-zinc-600 min-h-[44px]"
           />
           <button
             type="submit"
             disabled={!manualCode.trim()}
-            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-medium text-sm rounded-xl transition-colors flex items-center gap-1"
+            className="px-4 py-2 bg-white hover:bg-zinc-200 disabled:opacity-50 text-black font-medium text-sm rounded-xl transition-colors flex items-center gap-1 min-h-[44px]"
           >
             Enter
           </button>

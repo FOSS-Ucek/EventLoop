@@ -2,7 +2,7 @@
 
 import { QRCodeSVG } from "qrcode.react";
 import { useState, useRef } from "react";
-import { Copy, Check, Download, Share2, ExternalLink } from "lucide-react";
+import { Copy, Check, Download, Share2 } from "lucide-react";
 
 interface QRCodeDisplayProps {
   eventId: string;
@@ -64,7 +64,7 @@ export default function QRCodeDisplay({
     <div className="flex flex-col items-center space-y-6">
       <div
         ref={qrRef}
-        className="p-6 bg-white rounded-2xl shadow-lg border border-gray-100 flex flex-col items-center justify-center dark:border-zinc-800"
+        className="p-6 bg-white rounded-2xl shadow-lg border border-zinc-200 flex flex-col items-center justify-center"
       >
         <QRCodeSVG
           value={eventUrl}
@@ -72,27 +72,27 @@ export default function QRCodeDisplay({
           level="H"
           includeMargin={true}
         />
-        <p className="mt-4 text-xs font-mono text-gray-500 uppercase tracking-wider">
+        <p className="mt-4 text-xs font-mono text-zinc-500 uppercase tracking-wider">
           CODE: {eventCode}
         </p>
       </div>
 
-      <div className="w-full max-w-sm space-y-3">
-        <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-zinc-900 rounded-lg border text-sm font-mono break-all">
-          <span className="truncate mr-2 text-xs text-gray-600 dark:text-gray-400">{eventUrl}</span>
+      <div className="w-full max-w-sm space-y-3 text-white">
+        <div className="flex items-center justify-between p-3 bg-black border border-zinc-800 rounded-lg text-sm font-mono break-all min-h-[44px]">
+          <span className="truncate mr-2 text-xs text-zinc-400">{eventUrl}</span>
           <button
             onClick={handleCopyLink}
-            className="p-1.5 hover:bg-gray-200 dark:hover:bg-zinc-800 rounded transition-colors text-xs flex items-center gap-1 font-sans"
+            className="p-1.5 hover:bg-zinc-800 rounded transition-colors text-xs flex items-center gap-1 font-sans min-h-[44px]"
             title="Copy URL"
           >
             {copied ? (
               <>
-                <Check className="w-4 h-4 text-green-600" />
-                <span className="text-green-600">Copied</span>
+                <Check className="w-4 h-4 text-white" />
+                <span className="text-white">Copied</span>
               </>
             ) : (
               <>
-                <Copy className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                <Copy className="w-4 h-4 text-zinc-400" />
                 <span>Copy</span>
               </>
             )}
@@ -102,14 +102,14 @@ export default function QRCodeDisplay({
         <div className="flex gap-3">
           <button
             onClick={handleDownloadQR}
-            className="flex-1 py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg shadow-sm flex items-center justify-center gap-2 transition-colors"
+            className="flex-1 py-2.5 px-4 bg-white hover:bg-zinc-200 text-black text-sm font-medium rounded-lg shadow-sm flex items-center justify-center gap-2 transition-colors min-h-[44px]"
           >
             <Download className="w-4 h-4" />
             Download QR
           </button>
           <button
             onClick={handleCopyLink}
-            className="py-2.5 px-4 bg-gray-100 dark:bg-zinc-800 hover:bg-gray-200 dark:hover:bg-zinc-700 text-sm font-medium rounded-lg flex items-center justify-center gap-2 transition-colors"
+            className="py-2.5 px-4 bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-white text-sm font-medium rounded-lg flex items-center justify-center gap-2 transition-colors min-h-[44px]"
           >
             <Share2 className="w-4 h-4" />
             Share
