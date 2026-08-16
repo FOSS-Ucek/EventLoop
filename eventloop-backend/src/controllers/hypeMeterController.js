@@ -1,6 +1,11 @@
 const prisma = require("../config/prisma");
 const { isValidObjectId } = require("../utils/validation");
-const { getActiveMeter } = require("../services/hypeMeterService");
+const {
+  getActiveMeter,
+  activateMeter,
+  resetMeter,
+  stopMeter,
+} = require("../services/hypeMeterService");
 
 // 1. Get All Hype Meters for an Event
 const getHypeMeters = async (req, res) => {
@@ -117,20 +122,7 @@ const activateHypeMeter = async (req, res) => {
   }
 
   try {
-    // Reset all other active meters for the same event to pending first
-    const meterToActivate = await prisma.hypeMeter.findUnique({ where: { id } });
-    if (meterToActivate) {
-      await prisma.hypeMeter.updateMany({
-        where: { eventId: meterToActivate.eventId, status: "active" },
-        data: { status: "pending" },
-      });
-    }
-
-    const updated = await prisma.hypeMeter.update({
-      where: { id },
-      data: { status: "active", currentTaps: 0, startedAt: new Date() },
-      include: { event: true },
-    });
+    const updated = await activateMeter(id);
 
     const io = req.app.get("io");
     if (io) {
@@ -158,10 +150,7 @@ const resetHypeMeter = async (req, res) => {
   }
 
   try {
-    const updated = await prisma.hypeMeter.update({
-      where: { id },
-      data: { status: "pending", currentTaps: 0 },
-    });
+    const updated = await resetMeter(id);
 
     const io = req.app.get("io");
     if (io) {
@@ -188,15 +177,7 @@ const stopHypeMeter = async (req, res) => {
   }
 
   try {
-    const meter = await prisma.hypeMeter.findUnique({ where: { id } });
-    if (!meter) {
-      return res.status(404).json({ success: false, error: "Hype meter not found" });
-    }
-
-    const updated = await prisma.hypeMeter.update({
-      where: { id },
-      data: { status: "stopped" },
-    });
+    const updated = await stopMeter(id);
 
     const io = req.app.get("io");
     if (io) {

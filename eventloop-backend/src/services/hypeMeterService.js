@@ -1,35 +1,58 @@
 const prisma = require("../config/prisma");
 
-// In-Memory Hype Meter Cache to handle 100,000+ taps without DB connection pool choke
+// In-Memory Hype Meter Cache
 const activeMeters = new Map();
+const loadingPromises = new Map();
 
 /**
- * Get active meter from in-memory cache or DB
+ * Get active meter from in-memory cache or DB (with promise deduplication)
  */
 async function getActiveMeter(id) {
   let meter = activeMeters.get(id);
-  if (!meter) {
-    const dbMeter = await prisma.hypeMeter.findUnique({
-      where: { id },
-      include: { event: true },
-    });
-    if (!dbMeter) return null;
-    meter = {
-      id: dbMeter.id,
-      eventId: dbMeter.eventId,
-      title: dbMeter.title,
-      tapsNeeded: dbMeter.tapsNeeded,
-      currentTaps: dbMeter.currentTaps,
-      status: dbMeter.status,
-      videoUrl: dbMeter.videoUrl,
-      event: dbMeter.event,
-      dirty: false,
-    };
-    if (dbMeter.status === "active") {
-      activeMeters.set(id, meter);
-    }
+  if (meter) return meter;
+
+  // Deduplicate concurrent async DB fetches for the same meter ID
+  if (loadingPromises.has(id)) {
+    return await loadingPromises.get(id);
   }
-  return meter;
+
+  const promise = (async () => {
+    try {
+      const dbMeter = await prisma.hypeMeter.findUnique({
+        where: { id },
+        include: { event: true },
+      });
+      if (!dbMeter) return null;
+
+      // Check cache again in case activateMeter ran while we were fetching
+      if (activeMeters.has(id)) {
+        return activeMeters.get(id);
+      }
+
+      const m = {
+        id: dbMeter.id,
+        eventId: dbMeter.eventId,
+        title: dbMeter.title,
+        tapsNeeded: dbMeter.tapsNeeded,
+        currentTaps: dbMeter.currentTaps,
+        status: dbMeter.status,
+        videoUrl: dbMeter.videoUrl,
+        event: dbMeter.event,
+        startedAt: dbMeter.startedAt,
+        dirty: false,
+      };
+
+      if (dbMeter.status === "active") {
+        activeMeters.set(id, m);
+      }
+      return m;
+    } finally {
+      loadingPromises.delete(id);
+    }
+  })();
+
+  loadingPromises.set(id, promise);
+  return await promise;
 }
 
 /**
@@ -74,10 +97,23 @@ async function activateMeter(id) {
 }
 
 /**
- * Handle a tap event in memory
+ * Reset a meter to pending / 0 taps
  */
-async function registerTap(hypeMeterId) {
-  const meter = await getActiveMeter(hypeMeterId);
+async function resetMeter(id) {
+  activeMeters.delete(id);
+  const updated = await prisma.hypeMeter.update({
+    where: { id },
+    data: { status: "pending", currentTaps: 0 },
+    include: { event: true },
+  });
+  return updated;
+}
+
+/**
+ * Handle a tap event synchronously in memory to prevent race conditions
+ */
+function registerTapSync(hypeMeterId) {
+  const meter = activeMeters.get(hypeMeterId);
   if (!meter || meter.status !== "active") return null;
 
   if (meter.currentTaps >= meter.tapsNeeded) {
@@ -91,31 +127,44 @@ async function registerTap(hypeMeterId) {
   if (isCompleted) {
     meter.status = "completed";
     activeMeters.delete(hypeMeterId);
-    // Write completion state immediately to DB
-    await prisma.hypeMeter.update({
-      where: { id: hypeMeterId },
-      data: { status: "completed", currentTaps: meter.currentTaps },
-    });
+
+    // Asynchronously update completion in DB
+    prisma.hypeMeter
+      .update({
+        where: { id: hypeMeterId },
+        data: { status: "completed", currentTaps: meter.currentTaps },
+      })
+      .catch((err) => console.error("❌ Completion DB update error:", err));
   }
 
   return { meter, isCompleted };
 }
 
 /**
+ * Async wrapper for tap registration
+ */
+async function registerTap(hypeMeterId) {
+  let meter = activeMeters.get(hypeMeterId);
+  if (!meter) {
+    meter = await getActiveMeter(hypeMeterId);
+  }
+  if (!meter || meter.status !== "active") return null;
+  return registerTapSync(hypeMeterId);
+}
+
+/**
  * Stop a meter
  */
 async function stopMeter(id) {
-  const meter = await getActiveMeter(id);
+  const meter = activeMeters.get(id);
   const currentTaps = meter ? meter.currentTaps : 0;
-  
-  if (meter) {
-    meter.status = "stopped";
-    activeMeters.delete(id);
-  }
+
+  activeMeters.delete(id);
 
   const dbMeter = await prisma.hypeMeter.update({
     where: { id },
     data: { status: "stopped", currentTaps },
+    include: { event: true },
   });
 
   return dbMeter;
@@ -142,6 +191,8 @@ module.exports = {
   activeMeters,
   getActiveMeter,
   activateMeter,
+  resetMeter,
   registerTap,
+  registerTapSync,
   stopMeter,
 };
