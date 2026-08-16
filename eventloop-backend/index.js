@@ -18,6 +18,11 @@ const io = new Server(server, {
 app.set("io", io);
 
 const prisma = require("./src/config/prisma");
+const {
+  activateMeter,
+  registerTap,
+  stopMeter,
+} = require("./src/services/hypeMeterService");
 
 io.on("connection", (socket) => {
   console.log(`📡 Socket connected: ${socket.id}`);
@@ -44,70 +49,46 @@ io.on("connection", (socket) => {
   socket.on("hype:activate", async (data) => {
     const { hypeMeterId } = data;
     try {
-      const meterToActivate = await prisma.hypeMeter.findUnique({ where: { id: hypeMeterId } });
-      if (meterToActivate) {
-        await prisma.hypeMeter.updateMany({
-          where: { eventId: meterToActivate.eventId, status: "active" },
-          data: { status: "pending" },
-        });
-      }
-
-      const meter = await prisma.hypeMeter.update({
-        where: { id: hypeMeterId },
-        data: { status: "active", currentTaps: 0, startedAt: new Date() },
-        include: { event: true },
-      });
+      const meter = await activateMeter(hypeMeterId);
       io.to(`event:${meter.eventId}`).emit("HYPE_METER_START", {
         startedAt: meter.startedAt,
         initialScore: 0,
-        hypeMeter: meter
+        hypeMeter: meter,
       });
-      console.log(`🔥 Hype meter activated: ${meter.title} for event ${meter.event.title}`);
+      console.log(`🔥 Hype meter activated: ${meter.title}`);
     } catch (err) {
       console.error("❌ hype:activate error:", err);
       socket.emit("hype:error", { message: "Failed to activate hype meter" });
     }
   });
 
-  // User taps - increment and broadcast
+  // User taps - increment in-memory counter and broadcast instantly
   socket.on("hype:tap", async (data) => {
     const { hypeMeterId, user } = data;
     try {
-      const meter = await prisma.hypeMeter.findUnique({ where: { id: hypeMeterId } });
-      if (!meter || meter.status !== "active") return;
+      const result = await registerTap(hypeMeterId);
+      if (!result) return;
+      const { meter, isCompleted } = result;
 
-      // Don't increment past tapsNeeded
-      if (meter.currentTaps >= meter.tapsNeeded) return;
-
-      const updated = await prisma.hypeMeter.update({
-        where: { id: hypeMeterId },
-        data: { currentTaps: { increment: 1 } },
+      io.to(`event:${meter.eventId}`).emit("HYPE_METER_UPDATE", {
+        currentScore: meter.currentTaps,
+        tapsNeeded: meter.tapsNeeded,
+        hypeMeterId: meter.id,
+        tapper: user
+          ? {
+              name: user.name || "Anonymous",
+              image: user.image || null,
+            }
+          : null,
       });
 
-      const percentage = Math.min(100, Math.round((updated.currentTaps / updated.tapsNeeded) * 100));
-
-      io.to(`event:${updated.eventId}`).emit("HYPE_METER_UPDATE", {
-        currentScore: updated.currentTaps,
-        tapsNeeded: updated.tapsNeeded,
-        hypeMeterId: updated.id,
-        tapper: user ? {
-          name: user.name || "Anonymous",
-          image: user.image || null,
-        } : null,
-      });
-
-      // Check if completed
-      if (updated.currentTaps >= updated.tapsNeeded) {
-        const completed = await prisma.hypeMeter.update({
-          where: { id: hypeMeterId },
-          data: { status: "completed" },
+      if (isCompleted) {
+        io.to(`event:${meter.eventId}`).emit("HYPE_METER_STOP", {
+          finalScore: meter.currentTaps,
+          hypeMeterId: meter.id,
+          videoUrl: meter.videoUrl,
         });
-        io.to(`event:${updated.eventId}`).emit("HYPE_METER_STOP", {
-          finalScore: updated.currentTaps,
-          hypeMeterId: updated.id,
-          videoUrl: updated.videoUrl,
-        });
-        console.log(`🎉 Hype meter completed: ${meter.title}`);
+        console.log(`🎉 Hype meter completed: ${meter.title} (${meter.currentTaps} taps)`);
       }
     } catch (err) {
       console.error("❌ hype:tap error:", err);
@@ -118,19 +99,12 @@ io.on("connection", (socket) => {
   socket.on("hype:stop", async (data) => {
     const { hypeMeterId } = data;
     try {
-      const meter = await prisma.hypeMeter.findUnique({ where: { id: hypeMeterId } });
-      if (!meter || meter.status !== "active") return;
-
-      const updated = await prisma.hypeMeter.update({
-        where: { id: hypeMeterId },
-        data: { status: "stopped" },
-      });
-
+      const updated = await stopMeter(hypeMeterId);
       io.to(`event:${updated.eventId}`).emit("HYPE_METER_STOP", {
         finalScore: updated.currentTaps,
         hypeMeterId: updated.id,
       });
-      console.log(`🛑 Hype meter stopped by admin: ${meter.title}`);
+      console.log(`🛑 Hype meter stopped by admin: ${hypeMeterId}`);
     } catch (err) {
       console.error("❌ hype:stop error:", err);
     }

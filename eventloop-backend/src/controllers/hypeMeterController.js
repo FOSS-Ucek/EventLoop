@@ -1,5 +1,6 @@
 const prisma = require("../config/prisma");
 const { isValidObjectId } = require("../utils/validation");
+const { getActiveMeter } = require("../services/hypeMeterService");
 
 // 1. Get All Hype Meters for an Event
 const getHypeMeters = async (req, res) => {
@@ -35,10 +36,7 @@ const getHypeMeter = async (req, res) => {
   }
 
   try {
-    const hypeMeter = await prisma.hypeMeter.findUnique({
-      where: { id },
-      include: { event: true },
-    });
+    const hypeMeter = await getActiveMeter(id);
 
     if (!hypeMeter) {
       return res.status(404).json({ success: false, error: "Hype meter not found" });
