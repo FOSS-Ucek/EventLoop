@@ -84,13 +84,40 @@ export default function HomePageClient({ userProfile, backendUrl }: HomePageClie
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      // 1. If user is logged out, clear active event state and localStorage
-      if (!userProfile?.id) {
+      // 1. Check process.env.NEXT_PUBLIC_EVENT_ID first
+      const envEventId = process.env.NEXT_PUBLIC_EVENT_ID;
+      if (envEventId) {
+        if (userProfile?.id) {
+          joinEventOnBackend(envEventId);
+        } else {
+          const fetchEnvEvent = async () => {
+            try {
+              const res = await fetch(`${backendUrl}/api/event/state?eventId=${envEventId}`);
+              const data = await res.json();
+              if (res.ok && data.success && data.config) {
+                const eventObj: EventItem = {
+                  id: data.config.eventId,
+                  title: data.config.eventName,
+                  code: data.config.eventId,
+                  status: "active",
+                  createdAt: new Date().toISOString(),
+                };
+                setActiveEvent(eventObj);
+                setEventId(envEventId);
+              }
+            } catch (err) {
+              console.error("Failed to resolve env event ID:", err);
+            }
+          };
+          fetchEnvEvent();
+        }
+      } else if (!userProfile?.id) {
+        // 2. If user is logged out and no env var, clear active event state
         setActiveEvent(null);
         localStorage.removeItem("activeEvent");
         setEventId(null);
       } else {
-        // 2. User is logged in: fetch joined events from database
+        // 3. User is logged in: fetch joined events from database
         const fetchJoinedEvents = async () => {
           try {
             const res = await fetch(`${backendUrl}/api/user/joined-events?userId=${userProfile.id}`);

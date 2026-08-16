@@ -311,7 +311,11 @@ export default function AdminEventsManager({
         ) : (
           <div className="divide-y divide-zinc-800">
             {events.map((evt) => {
-              const participantCount = evt.participants?.length || 0;
+              // Deduplicate participants by user ID
+              const uniqueParticipants = (evt.participants || []).filter(
+                (p, index, self) => index === self.findIndex((t) => t.user.id === p.user.id)
+              );
+              const participantCount = uniqueParticipants.length;
               return (
                 <div
                   key={evt.id}
@@ -373,7 +377,7 @@ export default function AdminEventsManager({
                         Joined Participants ({participantCount}):
                       </span>
                       <div className="flex flex-wrap gap-2">
-                        {evt.participants?.map((p, idx) => (
+                        {uniqueParticipants.map((p, idx) => (
                           <div
                             key={idx}
                             className="flex items-center gap-1.5 px-2.5 py-1 bg-zinc-900 border border-zinc-800 rounded-lg shadow-sm min-h-[32px]"
