@@ -4,7 +4,9 @@ import "./globals.css";
 import Navbar from "@/components/Navbar";
 import { EventProvider } from "@/components/providers/EventProvider";
 import HypeMeterOverlay from "@/components/HypeMeterOverlay";
+import GameOverlay from "@/components/GameOverlay";
 import { auth } from "@/auth";
+
 
 const inter = Inter({
   variable: "--font-inter",
@@ -87,7 +89,9 @@ export default async function RootLayout({
           <Navbar session={sessionData} />
           <main className="flex-1 flex flex-col">{children}</main>
           <HypeMeterOverlay />
+          <GameOverlay />
         </EventProvider>
+
       </body>
     </html>
   );

@@ -77,6 +77,7 @@ model Event {
   createdBy    String?            @db.ObjectId
   participants EventParticipant[]
   hypeMeters   HypeMeter[]
+  gameSessions GameSession[]
   createdAt    DateTime           @default(now())
   updatedAt    DateTime           @updatedAt
 }
@@ -108,3 +109,36 @@ model HypeMeter {
 
   event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
 }
+
+model GameSession {
+  id          String      @id @default(auto()) @map("_id") @db.ObjectId
+  eventId     String      @db.ObjectId
+  gameType    String      @default("dino") // "dino"
+  title       String
+  timeLimit   Int         @default(60) // time limit in seconds
+  status      String      @default("pending") // "pending" | "active" | "completed"
+  startedAt   DateTime?
+  endsAt      DateTime?
+  createdBy   String?     @db.ObjectId
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  scores      GameScore[]
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+}
+
+
+model GameScore {
+  id            String      @id @default(auto()) @map("_id") @db.ObjectId
+  gameSessionId String      @db.ObjectId
+  userId        String?
+  userName      String
+  userImage     String?
+  score         Int         @default(0)
+  linesCleared  Int         @default(0)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  gameSession GameSession @relation(fields: [gameSessionId], references: [id], onDelete: Cascade)
+}
+

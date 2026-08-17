@@ -1,5 +1,6 @@
 const prisma = require("../config/prisma");
 const { isValidObjectId } = require("../utils/validation");
+const { getLeaderboard } = require("../services/gameSessionService");
 
 // 1. Get All Events (Includes participant counts)
 const getEvents = async (req, res) => {
@@ -228,6 +229,16 @@ const getEventState = async (req, res) => {
         hypeMeters: {
           where: { status: "active" },
           take: 1
+        },
+        gameSessions: {
+          where: { status: "active" },
+          take: 1,
+          include: {
+            scores: {
+              orderBy: { score: "desc" },
+              take: 50,
+            }
+          }
         }
       }
     });
@@ -237,6 +248,7 @@ const getEventState = async (req, res) => {
     }
 
     const activeHypeMeter = event.hypeMeters[0];
+    const activeGameSession = event.gameSessions[0];
 
     const response = {
       success: true,
@@ -252,6 +264,10 @@ const getEventState = async (req, res) => {
           currentScore: 0,
           startedAt: null,
           meter: null
+        },
+        gameSession: {
+          isActive: false,
+          session: null
         }
       }
     };
@@ -270,7 +286,24 @@ const getEventState = async (req, res) => {
       };
     }
 
+    if (activeGameSession) {
+      const leaderboard = await getLeaderboard(activeGameSession.id);
+      response.config.gameSession = {
+        isActive: true,
+        session: {
+          id: activeGameSession.id,
+          title: activeGameSession.title,
+          gameType: activeGameSession.gameType,
+          timeLimit: activeGameSession.timeLimit,
+          startedAt: activeGameSession.startedAt,
+          endsAt: activeGameSession.endsAt,
+          leaderboard,
+        }
+      };
+    }
+
     res.json(response);
+
   } catch (error) {
     console.error("❌ Get event state error:", error);
     res.status(500).json({ success: false, error: "Failed to fetch event state" });

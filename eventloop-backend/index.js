@@ -24,15 +24,21 @@ const {
   stopMeter,
 } = require("./src/services/hypeMeterService");
 
+const {
+  activateGameSession,
+  stopGameSession,
+  submitScore,
+} = require("./src/services/gameSessionService");
+
 io.on("connection", (socket) => {
   console.log(`📡 Socket connected: ${socket.id}`);
 
-  // Join an event room for receiving hype updates
+  // Join an event room for receiving hype & game updates
   socket.on("hype:join-room", (data) => {
     const { eventId } = data;
     if (eventId) {
       socket.join(`event:${eventId}`);
-      console.log(`🔥 Socket ${socket.id} joined hype room: event:${eventId}`);
+      console.log(`🔥 Socket ${socket.id} joined event room: event:${eventId}`);
     }
   });
 
@@ -41,7 +47,7 @@ io.on("connection", (socket) => {
     const { eventId } = data;
     if (eventId) {
       socket.leave(`event:${eventId}`);
-      console.log(`👋 Socket ${socket.id} left hype room: event:${eventId}`);
+      console.log(`👋 Socket ${socket.id} left event room: event:${eventId}`);
     }
   });
 
@@ -110,10 +116,62 @@ io.on("connection", (socket) => {
     }
   });
 
+  // ── GAME SOCKET LISTENERS ──
+
+  // Admin activates a game session
+  socket.on("game:activate", async (data) => {
+    const { gameSessionId } = data;
+    try {
+      const session = await activateGameSession(gameSessionId, io);
+      io.to(`event:${session.eventId}`).emit("GAME_START", {
+        gameSession: session,
+        startedAt: session.startedAt,
+        endsAt: session.endsAt,
+        timeLimit: session.timeLimit,
+      });
+      console.log(`🎮 Game session activated via socket: ${session.title}`);
+    } catch (err) {
+      console.error("❌ game:activate error:", err);
+      socket.emit("game:error", { message: err.message || "Failed to activate game session" });
+    }
+  });
+
+  // Admin stops a game session
+  socket.on("game:stop", async (data) => {
+    const { gameSessionId } = data;
+    try {
+      await stopGameSession(gameSessionId, io);
+      console.log(`🛑 Game session stopped via socket: ${gameSessionId}`);
+    } catch (err) {
+      console.error("❌ game:stop error:", err);
+    }
+  });
+
+  // User submits live score during gameplay
+  socket.on("game:score-update", async (data) => {
+    const { gameSessionId, userId, userName, userImage, score, linesCleared } = data;
+    try {
+      await submitScore(
+        {
+          gameSessionId,
+          userId,
+          userName: userName || "Player",
+          userImage: userImage || null,
+          score: score || 0,
+          linesCleared: linesCleared || 0,
+        },
+        io
+      );
+    } catch (err) {
+      console.error("❌ game:score-update error:", err);
+    }
+  });
+
   socket.on("disconnect", () => {
     console.log(`🔌 Socket disconnected: ${socket.id}`);
   });
 });
+
 
 // Start Server
 const PORT = process.env.PORT || 4000;
