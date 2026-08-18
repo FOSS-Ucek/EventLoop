@@ -212,7 +212,7 @@ export function EventProvider({
   useEffect(() => {
     if (!eventId) return;
 
-    const socket = io(backendUrl);
+    const socket = io(backendUrl, { transports: ["websocket"] });
     socketRef.current = socket;
 
     socket.on("connect", () => {

@@ -50,13 +50,12 @@ export default function HypeMeterScreen() {
   const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000";
 
   const completedRef = useRef<boolean>(false);
-  const lastNotifTimeRef = useRef<number>(0);
 
   useEffect(() => {
     if (!id) return;
 
     // Connect to socket once
-    const newSocket = io(backendUrl);
+    const newSocket = io(backendUrl, { transports: ["websocket"] });
     socketRef.current = newSocket;
 
     const fetchMeter = async () => {
@@ -93,6 +92,7 @@ export default function HypeMeterScreen() {
       currentScore: number;
       tapsNeeded?: number;
       tapper?: { name: string; image: string | null } | null;
+      tappers?: { name: string; image: string | null }[];
     }) => {
       if (payload.hypeMeterId === id) {
         setMeter((prev) => {
@@ -102,19 +102,23 @@ export default function HypeMeterScreen() {
           return { ...prev, currentTaps: cappedTaps, tapsNeeded };
         });
 
-        if (payload.tapper && !completedRef.current) {
-          const now = Date.now();
-          if (now - lastNotifTimeRef.current > 80) {
-            lastNotifTimeRef.current = now;
-            const notif: TapNotification = {
-              id: Math.random().toString(36).substring(2, 9),
-              name: payload.tapper.name || "Participant",
-              image: payload.tapper.image,
-              time: now,
-            };
+        // Broadcasts are now batched server-side (one update per ~120ms covering
+        // every tap in that window), so `tappers` may hold several people at once.
+        const tappers = payload.tappers?.length
+          ? payload.tappers
+          : payload.tapper
+          ? [payload.tapper]
+          : [];
 
-            setTapNotifications((prev) => [notif, ...prev].slice(0, 5));
-          }
+        if (tappers.length && !completedRef.current) {
+          const now = Date.now();
+          const newNotifs: TapNotification[] = tappers.map((t) => ({
+            id: Math.random().toString(36).substring(2, 9),
+            name: t.name || "Participant",
+            image: t.image,
+            time: now,
+          }));
+          setTapNotifications((prev) => [...newNotifs.reverse(), ...prev].slice(0, 5));
         }
       }
     };
@@ -169,10 +173,12 @@ export default function HypeMeterScreen() {
     return () => clearInterval(timer);
   }, []);
 
-  // Enter Fullscreen mode when video starts playing on completion
+  // Play the (already-preloaded) video and enter fullscreen when the meter completes
   useEffect(() => {
     if (meter?.status === "completed" && videoRef.current) {
       const el = videoRef.current as any;
+      el.currentTime = 0;
+      el.play?.().catch(() => {});
       if (el.requestFullscreen) {
         el.requestFullscreen().catch(() => {});
       } else if (el.webkitRequestFullscreen) {
@@ -279,24 +285,32 @@ export default function HypeMeterScreen() {
         </div>
       )}
 
+      {/* Mounted as soon as the video URL is known (well before completion) so the browser can
+          buffer it in the background — avoids a cold-start stall at the live completion moment. */}
+      {meter.videoUrl && (
+        <video
+          ref={videoRef}
+          src={meter.videoUrl}
+          preload="auto"
+          playsInline
+          muted={!isCompleted}
+          className={
+            isCompleted
+              ? "fixed inset-0 z-[150] w-full h-full object-cover border-0 outline-none bg-black animate-[fadeIn_0.8s_ease-out]"
+              : "fixed top-0 left-0 w-px h-px opacity-0 pointer-events-none -z-10"
+          }
+        />
+      )}
+
       <div className="relative z-10 w-full h-full max-w-7xl px-8 flex flex-col items-center justify-center flex-1">
         {isCompleted ? (
-          <div className="fixed inset-0 z-[150] bg-black flex items-center justify-center animate-[fadeIn_0.8s_ease-out]">
-            {meter.videoUrl ? (
-              <video
-                ref={videoRef}
-                src={meter.videoUrl}
-                autoPlay
-                playsInline
-                muted={false}
-                className="w-full h-full object-cover border-0 outline-none"
-              />
-            ) : (
+          !meter.videoUrl && (
+            <div className="fixed inset-0 z-[150] bg-black flex items-center justify-center animate-[fadeIn_0.8s_ease-out]">
               <div className="w-64 h-64 rounded-full bg-zinc-900 flex items-center justify-center shadow-[0_0_100px_rgba(255,255,255,0.2)]">
                 <Flame className="w-32 h-32 text-white animate-pulse" />
               </div>
-            )}
-          </div>
+            </div>
+          )
         ) : (
           <div className="flex flex-col items-center">
             {/* Massive Circular Progress indicator */}

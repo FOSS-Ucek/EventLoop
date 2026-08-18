@@ -68,7 +68,7 @@ export default function GameDisplayScreen() {
   useEffect(() => {
     if (!id) return;
 
-    const newSocket = io(backendUrl);
+    const newSocket = io(backendUrl, { transports: ["websocket"] });
     socketRef.current = newSocket;
 
     const fetchGame = async () => {

@@ -19,6 +19,7 @@ app.set("io", io);
 
 const prisma = require("./src/config/prisma");
 const {
+  activeMeters,
   activateMeter,
   registerTap,
   stopMeter,
@@ -68,25 +69,18 @@ io.on("connection", (socket) => {
     }
   });
 
-  // User taps - increment in-memory counter and broadcast instantly
+  // User taps - increment in-memory counter; the broadcast loop below flushes
+  // progress to the room on a fixed interval instead of once per tap, so a
+  // crowd tapping concurrently doesn't turn into one socket message per tap.
   socket.on("hype:tap", async (data) => {
     const { hypeMeterId, user } = data;
     try {
-      const result = await registerTap(hypeMeterId);
+      const tapper = user
+        ? { name: user.name || "Anonymous", image: user.image || null }
+        : null;
+      const result = await registerTap(hypeMeterId, tapper);
       if (!result) return;
       const { meter, isCompleted } = result;
-
-      io.to(`event:${meter.eventId}`).emit("HYPE_METER_UPDATE", {
-        currentScore: meter.currentTaps,
-        tapsNeeded: meter.tapsNeeded,
-        hypeMeterId: meter.id,
-        tapper: user
-          ? {
-              name: user.name || "Anonymous",
-              image: user.image || null,
-            }
-          : null,
-      });
 
       if (isCompleted) {
         io.to(`event:${meter.eventId}`).emit("HYPE_METER_STOP", {
@@ -172,6 +166,27 @@ io.on("connection", (socket) => {
   });
 });
 
+// Flush batched hype-meter progress every 120ms instead of broadcasting per
+// tap - collapses a burst of concurrent taps into one HYPE_METER_UPDATE per
+// meter per interval, which is what actually made 180 concurrent tappers
+// affordable on a resource-constrained instance.
+setInterval(() => {
+  for (const [, meter] of activeMeters.entries()) {
+    if (meter.pendingBroadcast && meter.status === "active") {
+      meter.pendingBroadcast = false;
+      const tappers = meter.pendingTappers || [];
+      meter.pendingTappers = [];
+
+      io.to(`event:${meter.eventId}`).emit("HYPE_METER_UPDATE", {
+        currentScore: meter.currentTaps,
+        tapsNeeded: meter.tapsNeeded,
+        hypeMeterId: meter.id,
+        tapper: tappers.length ? tappers[tappers.length - 1] : null,
+        tappers,
+      });
+    }
+  }
+}, 120);
 
 // Start Server
 const PORT = process.env.PORT || 4000;

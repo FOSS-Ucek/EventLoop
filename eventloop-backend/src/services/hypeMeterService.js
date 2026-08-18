@@ -110,9 +110,12 @@ async function resetMeter(id) {
 }
 
 /**
- * Handle a tap event synchronously in memory to prevent race conditions
+ * Handle a tap event synchronously in memory to prevent race conditions.
+ * Does NOT broadcast directly - marks the meter dirty for the batched
+ * broadcast loop (see index.js) so a burst of concurrent taps collapses
+ * into one outgoing update per interval instead of one per tap.
  */
-function registerTapSync(hypeMeterId) {
+function registerTapSync(hypeMeterId, tapper) {
   const meter = activeMeters.get(hypeMeterId);
   if (!meter || meter.status !== "active") return null;
 
@@ -122,6 +125,12 @@ function registerTapSync(hypeMeterId) {
 
   meter.currentTaps += 1;
   meter.dirty = true;
+  meter.pendingBroadcast = true;
+  if (tapper) {
+    if (!meter.pendingTappers) meter.pendingTappers = [];
+    meter.pendingTappers.push(tapper);
+    if (meter.pendingTappers.length > 8) meter.pendingTappers.shift();
+  }
 
   const isCompleted = meter.currentTaps >= meter.tapsNeeded;
   if (isCompleted) {
@@ -143,13 +152,13 @@ function registerTapSync(hypeMeterId) {
 /**
  * Async wrapper for tap registration
  */
-async function registerTap(hypeMeterId) {
+async function registerTap(hypeMeterId, tapper) {
   let meter = activeMeters.get(hypeMeterId);
   if (!meter) {
     meter = await getActiveMeter(hypeMeterId);
   }
   if (!meter || meter.status !== "active") return null;
-  return registerTapSync(hypeMeterId);
+  return registerTapSync(hypeMeterId, tapper);
 }
 
 /**
