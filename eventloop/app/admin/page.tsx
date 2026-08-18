@@ -1,19 +1,10 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { Users, ArrowRight } from "lucide-react";
 import AdminEventsManager from "@/components/AdminEventsManager";
-import AdminUserRoleSelect from "@/components/AdminUserRoleSelect";
 
 export const revalidate = 0;
-
-interface DBUser {
-  id: string;
-  name: string | null;
-  email: string | null;
-  image: string | null;
-  role: string;
-  createdAt: string;
-}
 
 export default async function AdminPage() {
   const session = await auth();
@@ -36,26 +27,16 @@ export default async function AdminPage() {
   }
 
   const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000";
-  let users: DBUser[] = [];
   let events = [];
 
   try {
-    const [usersRes, eventsRes] = await Promise.all([
-      fetch(`${backendUrl}/api/users`, { cache: "no-store" }),
-      fetch(`${backendUrl}/api/events`, { cache: "no-store" }),
-    ]);
-
-    if (usersRes.ok) {
-      const data = await usersRes.json();
-      if (data.success) users = data.users;
-    }
-
+    const eventsRes = await fetch(`${backendUrl}/api/events`, { cache: "no-store" });
     if (eventsRes.ok) {
       const data = await eventsRes.json();
       if (data.success) events = data.events;
     }
   } catch (error) {
-    console.error("Failed to fetch data from backend:", error);
+    console.error("Failed to fetch events from backend:", error);
   }
 
   return (
@@ -74,51 +55,29 @@ export default async function AdminPage() {
         userId={session.user.id}
       />
 
-      {/* User Registry Section */}
+      {/* User Registry Card Link Section */}
       <div className="space-y-4 pt-4 border-t border-zinc-800">
-        <h2 className="text-xl font-bold">User Registry ({users.length})</h2>
-        <div className="border border-zinc-800 rounded-2xl p-4 glass-strong overflow-x-auto shadow-sm">
-          <table className="w-full text-left text-sm border-collapse">
-            <thead>
-              <tr className="border-b border-zinc-800 bg-black/40">
-                <th className="p-3 text-zinc-400 font-semibold">User</th>
-                <th className="p-3 text-zinc-400 font-semibold">Email</th>
-                <th className="p-3 text-zinc-400 font-semibold">Role</th>
-                <th className="p-3 text-zinc-400 font-semibold">ID</th>
-                <th className="p-3 text-zinc-400 font-semibold">Joined</th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.map((user) => (
-                <tr key={user.id} className="border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors">
-                  <td className="p-3 flex items-center gap-2">
-                    {user.image ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={user.image} alt="User" className="w-7 h-7 rounded-full object-cover border border-zinc-700" />
-                    ) : (
-                      <div className="w-7 h-7 rounded-full bg-zinc-800 border border-zinc-700 text-white font-bold flex items-center justify-center text-xs">
-                        {(user.name || "U").substring(0, 2)}
-                      </div>
-                    )}
-                    <span className="font-medium">{user.name || "Unnamed"}</span>
-                  </td>
-                  <td className="p-3 text-zinc-400">{user.email || "N/A"}</td>
-                  <td className="p-3">
-                    <AdminUserRoleSelect
-                      userId={session.user.id}
-                      currentRole={user.role}
-                      targetUserId={user.id}
-                      backendUrl={backendUrl}
-                    />
-                  </td>
-                  <td className="p-3 font-mono text-xs text-zinc-600">{user.id}</td>
-                  <td className="p-3 text-xs text-zinc-500">
-                    {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : "N/A"}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <h2 className="text-xl font-bold">User Management</h2>
+        <div className="border border-zinc-800 rounded-2xl p-6 glass-strong shadow-sm hover:border-zinc-700 transition-all">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center flex-shrink-0">
+                <Users className="w-6 h-6 text-indigo-400" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-white">User Registry & Roles</h3>
+                <p className="text-sm text-zinc-400 mt-0.5">
+                  View registered system accounts, search user details, and assign admin permissions on a dedicated management page.
+                </p>
+              </div>
+            </div>
+            <Link
+              href="/admin/users"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition-all active:scale-95 flex-shrink-0 shadow-lg"
+            >
+              Manage Users <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
         </div>
       </div>
     </div>
