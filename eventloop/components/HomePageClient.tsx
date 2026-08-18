@@ -35,16 +35,7 @@ interface HomePageClientProps {
 export default function HomePageClient({ userProfile, backendUrl }: HomePageClientProps) {
   const { setEventId, eventConfig } = useEvent();
 
-  // Synchronously initialize activeEvent from localStorage to prevent UI flashing
-  const [activeEvent, setActiveEvent] = useState<EventItem | null>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const stored = localStorage.getItem("activeEvent");
-        if (stored) return JSON.parse(stored);
-      } catch {}
-    }
-    return null;
-  });
+  const [activeEvent, setActiveEvent] = useState<EventItem | null>(null);
 
   const [showScanner, setShowScanner] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -101,6 +92,12 @@ export default function HomePageClient({ userProfile, backendUrl }: HomePageClie
     if (typeof window !== "undefined") {
       let isSubscribed = true;
       const envEventId = process.env.NEXT_PUBLIC_EVENT_ID;
+
+      // Restore cached event from localStorage after mount to avoid a hydration mismatch
+      try {
+        const stored = localStorage.getItem("activeEvent");
+        if (stored) setActiveEvent(JSON.parse(stored));
+      } catch {}
 
       const loadEventData = async () => {
         setIsInitialLoading(true);
