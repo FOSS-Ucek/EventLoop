@@ -143,6 +143,24 @@ body {
   50% { box-shadow: 0 0 80px rgba(var(--brand-accent-rgb), 0.6), 0 0 20px rgba(var(--brand-accent-rgb), 0.4) inset; }
 }
 
+@keyframes tapFloat {
+  0% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--x)), calc(-50% + var(--y))) scale(0.4) rotate(var(--rot));
+  }
+  15% {
+    opacity: 1;
+    transform: translate(calc(-50% + var(--x)), calc(-50% + var(--y))) scale(var(--scale)) rotate(var(--rot));
+  }
+  75% {
+    opacity: 0.95;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--x) + var(--fx)), calc(-50% + var(--y) + var(--fy))) scale(calc(var(--scale) * 1.15)) rotate(var(--rot));
+  }
+}
+
 @keyframes toast-in {
   from { opacity: 0; transform: translateY(20px) scale(0.85); }
   to { opacity: 1; transform: translateY(0) scale(1); }

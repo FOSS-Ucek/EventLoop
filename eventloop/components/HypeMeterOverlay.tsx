@@ -14,6 +14,17 @@ interface OverlayProps {
   session: SessionData | null;
 }
 
+interface TapParticle {
+  id: string;
+  x: number;
+  y: number;
+  floatX: number;
+  floatY: number;
+  scale: number;
+  rotation: number;
+  text: string;
+}
+
 const HypeMeterOverlayContent = memo(function HypeMeterOverlayContent({
   isHypeActive,
   hypeId,
@@ -23,31 +34,104 @@ const HypeMeterOverlayContent = memo(function HypeMeterOverlayContent({
   session,
 }: OverlayProps) {
   const [isTapping, setIsTapping] = useState(false);
+  const [particles, setParticles] = useState<TapParticle[]>([]);
 
-  const handleTap = useCallback((e?: React.SyntheticEvent) => {
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-    if (!socket || !hypeId || hypeCompleted) return;
+  const handleTap = useCallback(
+    (e?: React.SyntheticEvent) => {
+      if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+      if (!socket || !hypeId || hypeCompleted) return;
 
-    setIsTapping(true);
-    setTimeout(() => setIsTapping(false), 80);
+      setIsTapping(true);
+      setTimeout(() => setIsTapping(false), 80);
 
-    socket.emit("hype:tap", {
-      hypeMeterId: hypeId,
-      user: {
-        name: session?.name || "Participant",
-        image: session?.image || null,
-      },
-    });
-  }, [socket, hypeId, hypeCompleted, session]);
+      // Trigger haptic feedback on mobile devices if available
+      if (typeof window !== "undefined" && window.navigator && window.navigator.vibrate) {
+        try {
+          window.navigator.vibrate(15);
+        } catch (_) {}
+      }
+
+      // Calculate radial spawn position near center or relative to tap location
+      let startX = 0;
+      let startY = 0;
+
+      const nativeEvent = e?.nativeEvent as MouseEvent | TouchEvent | undefined;
+      let clientX: number | null = null;
+      let clientY: number | null = null;
+
+      if (nativeEvent) {
+        if ("clientX" in nativeEvent && typeof nativeEvent.clientX === "number" && nativeEvent.clientX > 0) {
+          clientX = nativeEvent.clientX;
+          clientY = nativeEvent.clientY;
+        } else if ("touches" in nativeEvent && nativeEvent.touches && nativeEvent.touches.length > 0) {
+          clientX = nativeEvent.touches[0].clientX;
+          clientY = nativeEvent.touches[0].clientY;
+        } else if ("changedTouches" in nativeEvent && nativeEvent.changedTouches && nativeEvent.changedTouches.length > 0) {
+          clientX = nativeEvent.changedTouches[0].clientX;
+          clientY = nativeEvent.changedTouches[0].clientY;
+        }
+      }
+
+      const angle = Math.random() * Math.PI * 2;
+
+      if (clientX !== null && clientY !== null && typeof window !== "undefined") {
+        const centerX = window.innerWidth / 2;
+        const centerY = window.innerHeight / 2;
+        // Position near click point relative to screen center with a slight random radial scatter (20-40px)
+        const scatter = 20 + Math.random() * 30;
+        startX = clientX - centerX + Math.cos(angle) * scatter;
+        startY = clientY - centerY + Math.sin(angle) * scatter;
+      } else {
+        // Random radial position around center (radius 40px to 130px)
+        const radius = 40 + Math.random() * 90;
+        startX = Math.cos(angle) * radius;
+        startY = Math.sin(angle) * radius;
+      }
+
+      // Float outwards radially and upwards
+      const floatX = Math.cos(angle) * (20 + Math.random() * 35);
+      const floatY = -70 - Math.random() * 50; // Float up by 70px - 120px
+      const scale = 0.9 + Math.random() * 0.45; // 0.9x to 1.35x scale
+      const rotation = (Math.random() - 0.5) * 24; // -12deg to +12deg tilt
+
+      const particleId = `${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+      const newParticle: TapParticle = {
+        id: particleId,
+        x: startX,
+        y: startY,
+        floatX,
+        floatY,
+        scale,
+        rotation,
+        text: "+1",
+      };
+
+      setParticles((prev) => [...prev.slice(-40), newParticle]);
+
+      setTimeout(() => {
+        setParticles((prev) => prev.filter((p) => p.id !== particleId));
+      }, 900);
+
+      socket.emit("hype:tap", {
+        hypeMeterId: hypeId,
+        user: {
+          name: session?.name || "Participant",
+          image: session?.image || null,
+        },
+      });
+    },
+    [socket, hypeId, hypeCompleted, session]
+  );
 
   if (!isHypeActive || !hypeId || session?.role === "admin") return null;
 
   return (
     <div
-      className={`fixed inset-0 z-[100] flex flex-col items-center justify-center overflow-hidden transition-all duration-500 ${
+      onClick={handleTap}
+      className={`fixed inset-0 z-[100] flex flex-col items-center justify-center overflow-hidden transition-all duration-500 select-none touch-manipulation cursor-pointer ${
         hypeStopping ? "animate-scale-out" : "animate-scale-in"
       }`}
       style={{ background: "#000" }}
@@ -57,6 +141,35 @@ const HypeMeterOverlayContent = memo(function HypeMeterOverlayContent({
         className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full blur-[150px] pointer-events-none opacity-30"
         style={{ background: "var(--brand-accent)" }}
       />
+
+      {/* Floating Radially Spawned +1 Particles */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none z-50 w-0 h-0 overflow-visible">
+        {particles.map((p) => (
+          <span
+            key={p.id}
+            className="absolute font-black text-4xl sm:text-6xl text-white select-none pointer-events-none tracking-tighter"
+            style={
+              {
+                left: 0,
+                top: 0,
+                textShadow:
+                  "0 4px 16px rgba(0, 0, 0, 0.95), 0 0 12px rgba(255, 255, 255, 0.9)",
+                WebkitTextStroke: "1.5px rgba(0, 0, 0, 0.7)",
+                "--x": `${p.x}px`,
+                "--y": `${p.y}px`,
+                "--fx": `${p.floatX}px`,
+                "--fy": `${p.floatY}px`,
+                "--scale": p.scale,
+                "--rot": `${p.rotation}deg`,
+                animation:
+                  "tapFloat 0.9s cubic-bezier(0.15, 0.85, 0.35, 1.2) forwards",
+              } as React.CSSProperties
+            }
+          >
+            {p.text}
+          </span>
+        ))}
+      </div>
 
       <div className="relative z-10 flex flex-col items-center justify-center w-full h-full px-6">
         {hypeCompleted ? (
@@ -88,7 +201,9 @@ const HypeMeterOverlayContent = memo(function HypeMeterOverlayContent({
                 isTapping ? "scale-125" : ""
               }`}
             />
-            <span className="font-black text-2xl sm:text-4xl mt-2 tracking-wider">TAP</span>
+            <span className="font-black text-2xl sm:text-4xl mt-2 tracking-wider">
+              TAP
+            </span>
           </button>
         )}
       </div>
@@ -97,7 +212,8 @@ const HypeMeterOverlayContent = memo(function HypeMeterOverlayContent({
 });
 
 export default function HypeMeterOverlay() {
-  const { isHypeActive, hypeData, hypeCompleted, hypeStopping, socket, session } = useEvent();
+  const { isHypeActive, hypeData, hypeCompleted, hypeStopping, socket, session } =
+    useEvent();
 
   return (
     <HypeMeterOverlayContent
