@@ -1,0 +1,19 @@
+name: Keep Render backend alive
+
+# Render's free tier spins the service down after 15 minutes of no traffic,
+# causing a 30-60s cold start on the next request. Pinging /api/health on a
+# schedule keeps it warm at zero cost. GitHub's cron scheduler can lag by a
+# few minutes on quiet repos, so this runs every 10 minutes to stay well
+# inside the 15-minute window. For guaranteed on-the-dot pings during a live
+# event, pair this with a free UptimeRobot/cron-job.org monitor as backup.
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping backend health endpoint
+        run: curl -sf --max-time 30 https://eventloop-dlip.onrender.com/api/health
