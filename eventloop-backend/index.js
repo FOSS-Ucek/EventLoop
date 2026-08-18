@@ -32,14 +32,11 @@ const {
 } = require("./src/services/gameSessionService");
 
 io.on("connection", (socket) => {
-  console.log(`📡 Socket connected: ${socket.id}`);
-
   // Join an event room for receiving hype & game updates
   socket.on("hype:join-room", (data) => {
     const { eventId } = data;
     if (eventId) {
       socket.join(`event:${eventId}`);
-      console.log(`🔥 Socket ${socket.id} joined event room: event:${eventId}`);
     }
   });
 
@@ -48,7 +45,6 @@ io.on("connection", (socket) => {
     const { eventId } = data;
     if (eventId) {
       socket.leave(`event:${eventId}`);
-      console.log(`👋 Socket ${socket.id} left event room: event:${eventId}`);
     }
   });
 
@@ -161,9 +157,6 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("disconnect", () => {
-    console.log(`🔌 Socket disconnected: ${socket.id}`);
-  });
 });
 
 // Flush batched hype-meter progress every 120ms instead of broadcasting per
