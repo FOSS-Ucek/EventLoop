@@ -130,7 +130,7 @@ export default async function AdminUsersPage() {
                     </td>
                     <td className="p-3 font-mono text-xs text-zinc-600">{user.id}</td>
                     <td className="p-3 text-xs text-zinc-500">
-                      {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : "N/A"}
+                      {user.createdAt ? new Date(user.createdAt).toLocaleDateString("en-US") : "N/A"}
                     </td>
                   </tr>
                 ))

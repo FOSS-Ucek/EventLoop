@@ -147,26 +147,49 @@ const HypeMeterOverlayContent = memo(function HypeMeterOverlayContent({
         {particles.map((p) => (
           <span
             key={p.id}
-            className="absolute font-black text-4xl sm:text-6xl text-white select-none pointer-events-none tracking-tighter"
+            className="absolute select-none pointer-events-none"
             style={
               {
                 left: 0,
                 top: 0,
-                textShadow:
-                  "0 4px 16px rgba(0, 0, 0, 0.95), 0 0 12px rgba(255, 255, 255, 0.9)",
-                WebkitTextStroke: "1.5px rgba(0, 0, 0, 0.7)",
                 "--x": `${p.x}px`,
                 "--y": `${p.y}px`,
                 "--fx": `${p.floatX}px`,
                 "--fy": `${p.floatY}px`,
                 "--scale": p.scale,
                 "--rot": `${p.rotation}deg`,
-                animation:
-                  "tapFloat 0.9s cubic-bezier(0.15, 0.85, 0.35, 1.2) forwards",
               } as React.CSSProperties
             }
           >
-            {p.text}
+            {/* Impact burst ring, tinted to the event's brand accent */}
+            <span
+              className="absolute rounded-full"
+              style={{
+                left: 0,
+                top: 0,
+                width: 56,
+                height: 56,
+                marginLeft: -28,
+                marginTop: -28,
+                background:
+                  "radial-gradient(circle, rgba(var(--brand-accent-rgb), 0.55) 0%, rgba(var(--brand-accent-rgb), 0) 72%)",
+                animation: "tapBurst 0.55s ease-out forwards",
+              }}
+            />
+            <span
+              className="absolute font-black text-4xl sm:text-6xl text-white tracking-tighter"
+              style={{
+                left: 0,
+                top: 0,
+                textShadow:
+                  "0 4px 16px rgba(0, 0, 0, 0.95), 0 0 16px rgba(var(--brand-accent-rgb), 0.85), 0 0 4px rgba(255, 255, 255, 0.6)",
+                WebkitTextStroke: "1.5px rgba(0, 0, 0, 0.75)",
+                animation:
+                  "tapFloat 0.9s cubic-bezier(0.15, 0.85, 0.35, 1.2) forwards",
+              }}
+            >
+              {p.text}
+            </span>
           </span>
         ))}
       </div>

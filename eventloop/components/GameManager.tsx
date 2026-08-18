@@ -40,6 +40,20 @@ export default function GameManager({ eventId, backendUrl, userId }: GameManager
     fetchGames();
   }, [eventId, backendUrl]);
 
+  // Keep the admin list in sync with state changes that didn't originate from
+  // this panel's own buttons (e.g. a game auto-completing when its timer
+  // expires) so the available actions never go stale.
+  useEffect(() => {
+    if (!socket) return;
+    const refresh = () => fetchGames();
+    socket.on("GAME_START", refresh);
+    socket.on("GAME_STOP", refresh);
+    return () => {
+      socket.off("GAME_START", refresh);
+      socket.off("GAME_STOP", refresh);
+    };
+  }, [socket, eventId, backendUrl]);
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || timeLimit <= 0) return;

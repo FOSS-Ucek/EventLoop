@@ -66,7 +66,7 @@ export default async function RootLayout({
 
   return (
     <html lang="en" className={`${inter.variable} antialiased`}>
-      <head>
+      <body>
         <Script
           id="performance-measure-patch"
           strategy="beforeInteractive"
@@ -86,8 +86,6 @@ export default async function RootLayout({
             `,
           }}
         />
-      </head>
-      <body>
         <EventProvider session={sessionData}>
           <Navbar session={sessionData} />
           <main className="flex-1 flex flex-col">{children}</main>

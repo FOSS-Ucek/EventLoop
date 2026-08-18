@@ -168,7 +168,7 @@ export default function HypeMeterScreen() {
   useEffect(() => {
     const timer = setInterval(() => {
       const now = Date.now();
-      setTapNotifications((prev) => prev.filter((n) => now - n.time < 4000));
+      setTapNotifications((prev) => prev.filter((n) => now - n.time < 6000));
     }, 1000);
     return () => clearInterval(timer);
   }, []);
@@ -253,7 +253,7 @@ export default function HypeMeterScreen() {
           {tapNotifications.map((notif) => (
             <div
               key={notif.id}
-              className="flex items-center gap-3 p-3 bg-zinc-900/90 backdrop-blur-lg border border-zinc-800 rounded-2xl shadow-[0_10px_25px_rgba(0,0,0,0.5)] animate-[slideIn_0.3s_ease-out]"
+              className="flex items-center gap-3 p-3 bg-zinc-900/90 backdrop-blur-lg border border-zinc-800 rounded-2xl shadow-[0_10px_25px_rgba(0,0,0,0.5)] animate-[slideIn_0.5s_ease-out]"
             >
               {notif.image ? (
                 // eslint-disable-next-line @next/next/no-img-element

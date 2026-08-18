@@ -347,7 +347,7 @@ export default function AdminEventsManager({
                         {evt.startDate && (
                           <span className="flex items-center gap-1">
                             <Calendar className="w-3.5 h-3.5 text-zinc-600" />
-                            {new Date(evt.startDate).toLocaleDateString()}
+                            {new Date(evt.startDate).toLocaleDateString("en-US")}
                           </span>
                         )}
                       </div>

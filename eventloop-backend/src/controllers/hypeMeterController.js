@@ -1,6 +1,7 @@
 const prisma = require("../config/prisma");
 const { isValidObjectId } = require("../utils/validation");
 const {
+  activeMeters,
   getActiveMeter,
   activateMeter,
   resetMeter,
@@ -92,6 +93,60 @@ const createHypeMeter = async (req, res) => {
   } catch (error) {
     console.error("❌ Create hype meter error:", error);
     res.status(500).json({ success: false, error: "Failed to create hype meter" });
+  }
+};
+
+// 3b. Update Hype Meter (title / taps needed / video URL)
+const updateHypeMeter = async (req, res) => {
+  const { id } = req.params;
+  const { title, tapsNeeded, videoUrl } = req.body;
+
+  if (!isValidObjectId(id)) {
+    return res.status(400).json({ success: false, error: "Invalid Hype Meter ID" });
+  }
+
+  const data = {};
+  if (title !== undefined) {
+    if (!title.trim()) {
+      return res.status(400).json({ success: false, error: "Title cannot be empty" });
+    }
+    data.title = title.trim();
+  }
+  if (videoUrl !== undefined) {
+    if (!videoUrl.trim()) {
+      return res.status(400).json({ success: false, error: "Video URL cannot be empty" });
+    }
+    data.videoUrl = videoUrl.trim();
+  }
+  if (tapsNeeded !== undefined) {
+    if (!tapsNeeded || tapsNeeded <= 0) {
+      return res.status(400).json({ success: false, error: "Taps needed must be greater than 0" });
+    }
+    data.tapsNeeded = Number(tapsNeeded);
+  }
+
+  if (Object.keys(data).length === 0) {
+    return res.status(400).json({ success: false, error: "No fields to update" });
+  }
+
+  try {
+    const updated = await prisma.hypeMeter.update({ where: { id }, data });
+
+    // Keep the in-memory active-meter cache in sync so an edit to a currently
+    // active meter (e.g. raising the target) takes effect immediately instead
+    // of waiting for the next activation to reload from the DB.
+    const cached = activeMeters.get(id);
+    if (cached) {
+      if (data.title !== undefined) cached.title = data.title;
+      if (data.videoUrl !== undefined) cached.videoUrl = data.videoUrl;
+      if (data.tapsNeeded !== undefined) cached.tapsNeeded = data.tapsNeeded;
+    }
+
+    console.log(`Updated hype meter: ${updated.title}`);
+    res.json({ success: true, hypeMeter: updated });
+  } catch (error) {
+    console.error("❌ Update hype meter error:", error);
+    res.status(500).json({ success: false, error: "Failed to update hype meter" });
   }
 };
 
@@ -199,6 +254,7 @@ module.exports = {
   getHypeMeters,
   getHypeMeter,
   createHypeMeter,
+  updateHypeMeter,
   deleteHypeMeter,
   activateHypeMeter,
   resetHypeMeter,

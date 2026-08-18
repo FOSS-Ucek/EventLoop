@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Flame, Zap, Play, RotateCcw, Trash2, ExternalLink, Plus, AlertCircle, Check, Square } from "lucide-react";
+import { Flame, Zap, Play, RotateCcw, Trash2, ExternalLink, Plus, AlertCircle, Check, Square, Pencil } from "lucide-react";
 import { useEvent } from "@/components/providers/EventProvider";
 
 interface HypeMeterItem {
@@ -12,7 +12,7 @@ interface HypeMeterItem {
   tapsNeeded: number;
   currentTaps: number;
   videoUrl?: string;
-  status: "pending" | "active" | "completed";
+  status: "pending" | "active" | "completed" | "stopped";
   createdAt: string;
 }
 
@@ -34,6 +34,11 @@ export default function HypeMeterManager({ eventId, backendUrl, userId }: HypeMe
   const [tapsNeeded, setTapsNeeded] = useState(1000);
   const [videoUrl, setVideoUrl] = useState("");
 
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editTapsNeeded, setEditTapsNeeded] = useState(1000);
+  const [editVideoUrl, setEditVideoUrl] = useState("");
+
   const fetchHypeMeters = async () => {
     try {
       const res = await fetch(`${backendUrl}/api/hype-meters?eventId=${eventId}`);
@@ -49,6 +54,20 @@ export default function HypeMeterManager({ eventId, backendUrl, userId }: HypeMe
   useEffect(() => {
     fetchHypeMeters();
   }, [eventId, backendUrl]);
+
+  // Keep the admin list in sync with state changes that didn't originate from
+  // this panel's own buttons (e.g. a meter completing because the crowd hit
+  // the target) so the available actions never go stale.
+  useEffect(() => {
+    if (!socket) return;
+    const refresh = () => fetchHypeMeters();
+    socket.on("HYPE_METER_START", refresh);
+    socket.on("HYPE_METER_STOP", refresh);
+    return () => {
+      socket.off("HYPE_METER_START", refresh);
+      socket.off("HYPE_METER_STOP", refresh);
+    };
+  }, [socket, eventId, backendUrl]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -122,6 +141,50 @@ export default function HypeMeterManager({ eventId, backendUrl, userId }: HypeMe
       }
     } catch (err) {
       setError(`Network error during ${action}`);
+    }
+  };
+
+  const startEdit = (meter: HypeMeterItem) => {
+    setEditingId(meter.id);
+    setEditTitle(meter.title);
+    setEditTapsNeeded(meter.tapsNeeded);
+    setEditVideoUrl(meter.videoUrl || "");
+    setError(null);
+  };
+
+  const cancelEdit = () => setEditingId(null);
+
+  const handleUpdate = async (e: React.FormEvent, id: string) => {
+    e.preventDefault();
+    if (!editTitle.trim() || editTapsNeeded <= 0 || !editVideoUrl.trim()) return;
+
+    setLoading(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const res = await fetch(`${backendUrl}/api/hype-meters/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId,
+          title: editTitle,
+          tapsNeeded: editTapsNeeded,
+          videoUrl: editVideoUrl,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setHypeMeters(hypeMeters.map((h) => (h.id === id ? data.hypeMeter : h)));
+        setSuccess("Hype Meter updated successfully!");
+        setEditingId(null);
+      } else {
+        setError(data.error || "Failed to update hype meter");
+      }
+    } catch (err) {
+      setError("Network error while updating hype meter");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -207,11 +270,69 @@ export default function HypeMeterManager({ eventId, backendUrl, userId }: HypeMe
       {hypeMeters.length > 0 && (
         <div className="space-y-2">
           {hypeMeters.map((meter) => (
+            editingId === meter.id ? (
+              <form
+                key={meter.id}
+                onSubmit={(e) => handleUpdate(e, meter.id)}
+                className="p-4 bg-black border border-zinc-800 rounded-xl space-y-3"
+              >
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="block text-[10px] uppercase font-bold text-zinc-500">Title</label>
+                    <input
+                      type="text"
+                      required
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                      className="w-full px-2.5 py-1.5 text-sm border rounded-lg bg-zinc-900 border-zinc-800 text-white min-h-[44px]"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block text-[10px] uppercase font-bold text-zinc-500">Taps Needed</label>
+                    <input
+                      type="number"
+                      required
+                      min="1"
+                      value={editTapsNeeded}
+                      onChange={(e) => setEditTapsNeeded(parseInt(e.target.value) || 0)}
+                      className="w-full px-2.5 py-1.5 text-sm border rounded-lg bg-zinc-900 border-zinc-800 text-white min-h-[44px]"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-[10px] uppercase font-bold text-zinc-500">Video URL *</label>
+                  <input
+                    type="url"
+                    required
+                    value={editVideoUrl}
+                    onChange={(e) => setEditVideoUrl(e.target.value)}
+                    className="w-full px-2.5 py-1.5 text-sm border rounded-lg bg-zinc-900 border-zinc-800 text-white min-h-[44px]"
+                    placeholder="e.g. https://example.com/video.mp4"
+                  />
+                </div>
+                <div className="flex justify-end gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={cancelEdit}
+                    className="px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-white border border-zinc-800 text-xs font-medium rounded-lg min-h-[44px]"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="px-3 py-1.5 bg-white hover:bg-zinc-200 text-black text-xs font-medium rounded-lg disabled:opacity-50 min-h-[44px]"
+                  >
+                    {loading ? "Saving..." : "Save Changes"}
+                  </button>
+                </div>
+              </form>
+            ) : (
             <div key={meter.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-black border border-zinc-800 rounded-xl">
               <div>
                 <div className="flex items-center gap-2">
                   <h5 className="font-bold text-sm text-white">{meter.title}</h5>
-                  <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded uppercase ${meter.status === 'active' ? 'bg-zinc-800 text-white border border-zinc-700' : meter.status === 'completed' ? 'bg-zinc-900 text-zinc-300 border border-zinc-700' : 'bg-black text-zinc-500 border border-zinc-800'}`}>
+                  <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded uppercase ${meter.status === 'active' ? 'bg-zinc-800 text-white border border-zinc-700' : meter.status === 'completed' ? 'bg-zinc-900 text-zinc-300 border border-zinc-700' : meter.status === 'stopped' ? 'bg-zinc-900 text-amber-400 border border-amber-900/50' : 'bg-black text-zinc-500 border border-zinc-800'}`}>
                     {meter.status}
                   </span>
                 </div>
@@ -221,11 +342,18 @@ export default function HypeMeterManager({ eventId, backendUrl, userId }: HypeMe
               </div>
 
               <div className="flex items-center gap-2">
-                {meter.status === "pending" && (
+                <button
+                  onClick={() => startEdit(meter)}
+                  className="p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
+                  title="Edit"
+                >
+                  <Pencil className="w-4 h-4" />
+                </button>
+                {(meter.status === "pending" || meter.status === "stopped") && (
                   <button
                     onClick={() => handleAction(meter.id, "activate")}
                     className="p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
-                    title="Activate"
+                    title={meter.status === "stopped" ? "Resume" : "Activate"}
                   >
                     <Play className="w-4 h-4" />
                   </button>
@@ -239,7 +367,7 @@ export default function HypeMeterManager({ eventId, backendUrl, userId }: HypeMe
                     <Square className="w-4 h-4" />
                   </button>
                 )}
-                {(meter.status === "active" || meter.status === "completed") && (
+                {(meter.status === "active" || meter.status === "completed" || meter.status === "stopped") && (
                   <button
                     onClick={() => handleAction(meter.id, "reset")}
                     className="p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
@@ -265,6 +393,7 @@ export default function HypeMeterManager({ eventId, backendUrl, userId }: HypeMe
                 </button>
               </div>
             </div>
+            )
           ))}
         </div>
       )}

@@ -146,10 +146,13 @@ body {
 @keyframes tapFloat {
   0% {
     opacity: 0;
-    transform: translate(calc(-50% + var(--x)), calc(-50% + var(--y))) scale(0.4) rotate(var(--rot));
+    transform: translate(calc(-50% + var(--x)), calc(-50% + var(--y))) scale(0.3) rotate(var(--rot));
   }
-  15% {
+  12% {
     opacity: 1;
+    transform: translate(calc(-50% + var(--x)), calc(-50% + var(--y))) scale(calc(var(--scale) * 1.18)) rotate(var(--rot));
+  }
+  24% {
     transform: translate(calc(-50% + var(--x)), calc(-50% + var(--y))) scale(var(--scale)) rotate(var(--rot));
   }
   75% {
@@ -157,7 +160,18 @@ body {
   }
   100% {
     opacity: 0;
-    transform: translate(calc(-50% + var(--x) + var(--fx)), calc(-50% + var(--y) + var(--fy))) scale(calc(var(--scale) * 1.15)) rotate(var(--rot));
+    transform: translate(calc(-50% + var(--x) + var(--fx)), calc(-50% + var(--y) + var(--fy))) scale(calc(var(--scale) * 1.1)) rotate(var(--rot));
+  }
+}
+
+@keyframes tapBurst {
+  0% {
+    opacity: 0.6;
+    transform: translate(var(--x), var(--y)) scale(0.2);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--x), var(--y)) scale(2.6);
   }
 }
 

@@ -121,7 +121,7 @@ export default async function EventQRPage({
                 <Calendar className="w-4 h-4 text-zinc-500 flex-shrink-0" />
                 <div>
                   <span className="text-xs text-zinc-500 block">Start Date</span>
-                  <span className="text-white">{new Date(event.startDate).toLocaleString()}</span>
+                  <span className="text-white">{new Date(event.startDate).toLocaleString("en-US")}</span>
                 </div>
               </div>
             )}
