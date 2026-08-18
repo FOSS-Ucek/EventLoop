@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
 import { io, Socket } from "socket.io-client";
-import { Trophy, Timer, Gamepad2, Maximize, Crown, Award, Zap } from "lucide-react";
+import { Gamepad2, Maximize, Minimize, Crown, Sparkles } from "lucide-react";
 
 interface GameScore {
   id: string;
@@ -95,7 +95,6 @@ export default function GameDisplayScreen() {
       } finally {
         setLoading(false);
       }
-
     };
 
     fetchGame();
@@ -168,15 +167,18 @@ export default function GameDisplayScreen() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="w-16 h-16 border-4 border-zinc-800 border-t-emerald-400 rounded-full animate-spin" />
+      <div className="min-h-screen bg-[#050508] flex items-center justify-center">
+        <div className="relative">
+          <div className="w-14 h-14 border-2 border-emerald-500/20 border-t-emerald-400 rounded-full animate-spin" />
+          <div className="absolute inset-0 blur-lg bg-emerald-500/20 rounded-full animate-pulse" />
+        </div>
       </div>
     );
   }
 
   if (error || !game) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center text-zinc-500 text-2xl font-bold">
+      <div className="min-h-screen bg-[#050508] flex items-center justify-center text-zinc-400 text-lg font-medium">
         {error || "Game session not found"}
       </div>
     );
@@ -188,190 +190,190 @@ export default function GameDisplayScreen() {
   const isCompleted = game.status === "completed";
 
   return (
-    <div className="min-h-screen bg-black text-white overflow-hidden flex flex-col items-center justify-between relative select-none w-full p-6 sm:p-12">
-      {/* Fullscreen Button */}
-      {!isFullscreen && (
-        <button
-          onClick={toggleFullscreen}
-          className="fixed top-6 right-6 z-[250] p-3 bg-zinc-900/80 hover:bg-zinc-800 border border-zinc-700 text-white rounded-xl backdrop-blur-md transition-all shadow-lg flex items-center gap-2 text-xs font-semibold"
-        >
-          <Maximize className="w-4 h-4" />
-          <span>Fullscreen</span>
-        </button>
-      )}
-
-      {/* Ambient background blur circles */}
-      <div className="absolute top-1/4 left-1/3 w-[600px] h-[600px] bg-emerald-900/20 rounded-full blur-[160px] pointer-events-none" />
-      <div className="absolute bottom-1/4 right-1/3 w-[600px] h-[600px] bg-amber-900/15 rounded-full blur-[160px] pointer-events-none" />
-
-      {/* Header Info */}
-      <div className="relative z-10 w-full max-w-7xl flex flex-col sm:flex-row items-center justify-between gap-6 border-b border-zinc-800 pb-6">
-        <div className="flex items-center gap-4 text-center sm:text-left">
-          <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center shadow-lg shadow-emerald-500/10">
-            <Gamepad2 className="w-8 h-8 text-emerald-400" />
+    <div className="min-h-screen bg-[#050508] text-white overflow-hidden flex flex-col items-center justify-between relative select-none w-full p-4 sm:p-8 font-sans">
+      {/* Floating Header HUD (Minimal & Clean, No App Bar) */}
+      <header className="relative z-20 w-full max-w-5xl flex items-center justify-between gap-4 pt-2 pb-4">
+        {/* Left: Game Title Pill */}
+        <div className="flex items-center gap-3 bg-white/[0.03] backdrop-blur-2xl border border-white/[0.08] px-4 py-2 rounded-full shadow-2xl animate-fade-in">
+          <div className="w-7 h-7 rounded-full bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center">
+            <Gamepad2 className="w-4 h-4 text-emerald-400" />
           </div>
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight">{game.title}</h1>
-              <span className="px-2.5 py-1 text-xs font-black uppercase rounded-lg bg-emerald-950 text-emerald-400 border border-emerald-800">
-                {game.gameType}
-              </span>
-            </div>
-            <p className="text-sm text-zinc-400 mt-1">Real-Time Tournament Arena</p>
+          <div className="flex items-center gap-2">
+            <h1 className="text-sm sm:text-base font-extrabold text-white tracking-wide">{game.title}</h1>
+            <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-zinc-400 px-2 py-0.5 rounded-full bg-white/[0.06]">
+              {game.gameType}
+            </span>
           </div>
         </div>
 
-        {/* Countdown Timer Display */}
-        <div className="flex items-center gap-4 bg-zinc-900/80 border border-zinc-800 px-6 py-3 rounded-2xl shadow-2xl backdrop-blur-md">
-          <Timer className="w-8 h-8 text-emerald-400" />
-          <div>
-            <span className="text-[10px] uppercase font-bold text-zinc-500 block tracking-widest">
-              {isCompleted ? "STATUS" : "TIME REMAINING"}
-            </span>
-            <span
-              className={`text-3xl sm:text-4xl font-black font-mono tracking-wider ${
-                isCompleted
-                  ? "text-red-500"
-                  : remainingSeconds <= 10
-                  ? "text-red-500 animate-pulse"
-                  : remainingSeconds <= 30
-                  ? "text-amber-400"
-                  : "text-emerald-400"
-              }`}
-            >
+        {/* Right: Timer Pill & Fullscreen Toggle */}
+        <div className="flex items-center gap-3 animate-fade-in">
+          {/* Timer HUD Pill */}
+          <div className="flex items-center gap-2.5 bg-white/[0.03] backdrop-blur-2xl border border-white/[0.08] px-4 py-2 rounded-full shadow-2xl">
+            <div className={`w-2 h-2 rounded-full ${isCompleted ? "bg-red-500" : "bg-emerald-400 animate-ping"}`} />
+            <span className="text-xs font-mono font-bold tracking-wider text-zinc-300 uppercase">
               {isCompleted ? "FINISHED" : formattedTime}
             </span>
           </div>
+
+          {/* Fullscreen Button */}
+          <button
+            onClick={toggleFullscreen}
+            className="p-2.5 rounded-full bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.08] text-zinc-300 hover:text-white backdrop-blur-2xl transition-all shadow-xl active:scale-95"
+            title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
+          >
+            {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
+          </button>
         </div>
-      </div>
+      </header>
 
       {/* Main Leaderboard Section */}
-      <div className="relative z-10 w-full max-w-7xl my-8 flex-1 flex flex-col justify-center">
+      <main className="relative z-10 w-full max-w-5xl my-auto flex-1 flex flex-col justify-center py-6">
         {isCompleted && leaderboard.length > 0 ? (
           /* Winner Podium View */
-          <div className="w-full flex flex-col items-center space-y-12 animate-scale-in">
+          <div className="w-full flex flex-col items-center space-y-10 animate-scale-in">
+            {/* Header Badge */}
             <div className="text-center space-y-2">
-              <Crown className="w-20 h-20 text-amber-400 mx-auto animate-bounce" />
-              <h2 className="text-4xl sm:text-6xl font-black text-white tracking-tight">
-                TOURNAMENT CHAMPIONS
+              <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-mono font-bold uppercase tracking-widest mb-2 animate-bounce">
+                <Crown className="w-3.5 h-3.5" /> Final Standings
+              </div>
+              <h2 className="text-3xl sm:text-5xl font-black text-white tracking-tight">
+                Tournament Champions
               </h2>
-              <p className="text-zinc-400 text-lg">Final Standing & Real-Time Winners</p>
             </div>
 
-            {/* Podium */}
-            <div className="grid grid-cols-3 gap-4 sm:gap-8 items-end max-w-3xl w-full">
+            {/* Podium Cards */}
+            <div className="grid grid-cols-3 gap-3 sm:gap-6 items-end max-w-2xl w-full pt-4">
               {/* 2nd Place */}
               {leaderboard[1] && (
-                <div className="flex flex-col items-center space-y-3">
-                  <div className="w-16 h-16 rounded-full bg-slate-800 border-2 border-slate-400 flex items-center justify-center font-bold text-2xl">
+                <div className="flex flex-col items-center space-y-3 animate-slide-up stagger-1">
+                  <div className="w-14 h-14 rounded-2xl bg-zinc-900/60 border border-zinc-800 flex items-center justify-center font-bold text-xl shadow-lg backdrop-blur-xl">
                     🥈
                   </div>
-                  <span className="font-extrabold text-lg text-slate-200 text-center line-clamp-1">
+                  <span className="font-bold text-sm text-slate-200 text-center line-clamp-1">
                     {leaderboard[1].userName}
                   </span>
-                  <div className="w-full bg-slate-900/90 border border-slate-700/60 rounded-t-2xl py-8 text-center shadow-2xl">
-                    <span className="text-2xl font-black text-white">{leaderboard[1].score}</span>
-                    <span className="text-xs text-zinc-400 block font-semibold">PTS</span>
+                  <div className="w-full bg-slate-900/40 border border-slate-700/40 rounded-2xl py-6 text-center shadow-xl backdrop-blur-xl">
+                    <span className="text-2xl font-black font-mono text-white">{leaderboard[1].score}</span>
+                    <span className="text-[10px] text-slate-400 block font-mono font-bold uppercase mt-0.5">PTS</span>
                   </div>
                 </div>
               )}
 
-              {/* 1st Place */}
+              {/* 1st Place (Gold Winner) */}
               {leaderboard[0] && (
-                <div className="flex flex-col items-center space-y-3">
-                  <div className="w-20 h-20 rounded-full bg-amber-500/20 border-4 border-amber-400 flex items-center justify-center font-bold text-3xl shadow-xl shadow-amber-500/20 animate-pulse">
-                    🥇
+                <div className="flex flex-col items-center space-y-3 animate-scale-in -translate-y-3">
+                  <div className="relative">
+                    <div className="w-18 h-18 rounded-2xl bg-amber-500/20 border-2 border-amber-400/70 flex items-center justify-center font-bold text-3xl shadow-2xl shadow-amber-500/30 backdrop-blur-xl animate-float">
+                      🥇
+                    </div>
+                    <Sparkles className="w-5 h-5 text-amber-300 absolute -top-2 -right-2 animate-pulse" />
                   </div>
-                  <span className="font-black text-xl text-amber-400 text-center line-clamp-1">
+                  <span className="font-extrabold text-base text-amber-300 text-center line-clamp-1">
                     {leaderboard[0].userName}
                   </span>
-                  <div className="w-full bg-amber-950/80 border-2 border-amber-500/60 rounded-t-3xl py-12 text-center shadow-2xl">
-                    <span className="text-4xl font-black text-amber-400">{leaderboard[0].score}</span>
-                    <span className="text-xs text-amber-200 block font-bold">WINNER</span>
+                  <div className="w-full bg-zinc-900/80 border-2 border-amber-500/50 rounded-2xl py-8 text-center shadow-2xl backdrop-blur-xl">
+                    <span className="text-4xl font-black font-mono text-amber-400 tracking-tight">{leaderboard[0].score}</span>
+                    <span className="text-[10px] text-amber-200/70 block font-mono font-bold uppercase mt-1">WINNER</span>
                   </div>
                 </div>
               )}
 
               {/* 3rd Place */}
               {leaderboard[2] && (
-                <div className="flex flex-col items-center space-y-3">
-                  <div className="w-16 h-16 rounded-full bg-amber-950 border-2 border-amber-700 flex items-center justify-center font-bold text-2xl">
+                <div className="flex flex-col items-center space-y-3 animate-slide-up stagger-2">
+                  <div className="w-14 h-14 rounded-2xl bg-zinc-900/60 border border-zinc-800 flex items-center justify-center font-bold text-xl shadow-lg backdrop-blur-xl">
                     🥉
                   </div>
-                  <span className="font-extrabold text-lg text-amber-600 text-center line-clamp-1">
+                  <span className="font-bold text-sm text-amber-600 text-center line-clamp-1">
                     {leaderboard[2].userName}
                   </span>
-                  <div className="w-full bg-zinc-900/90 border border-amber-900/60 rounded-t-2xl py-6 text-center shadow-2xl">
-                    <span className="text-2xl font-black text-white">{leaderboard[2].score}</span>
-                    <span className="text-xs text-zinc-400 block font-semibold">PTS</span>
+                  <div className="w-full bg-zinc-900/40 border border-amber-900/40 rounded-2xl py-5 text-center shadow-xl backdrop-blur-xl">
+                    <span className="text-2xl font-black font-mono text-white">{leaderboard[2].score}</span>
+                    <span className="text-[10px] text-zinc-500 block font-mono font-bold uppercase mt-0.5">PTS</span>
                   </div>
                 </div>
               )}
             </div>
           </div>
         ) : (
-          /* Live Ranking Grid */
-          <div className="w-full space-y-4">
-            <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
-              <h3 className="text-xl font-bold flex items-center gap-2 text-white">
-                <Trophy className="w-6 h-6 text-amber-400" />
-                Live Standings ({leaderboard.length} Players)
-              </h3>
-              <span className="text-xs font-mono text-zinc-500 flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                REAL-TIME LIVE
-              </span>
-            </div>
-
+          /* Live Standings View */
+          <div className="w-full space-y-4 animate-fade-in">
             {leaderboard.length === 0 ? (
-              <div className="text-center py-20 text-zinc-500 text-xl font-medium">
+              <div className="text-center py-24 text-zinc-500 text-sm font-medium">
                 Waiting for players to submit scores... Run distance in Dino Runner to reach the top!
               </div>
-
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[60vh] overflow-y-auto pr-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[68vh] overflow-y-auto pr-1">
                 {leaderboard.map((item, index) => {
-                  const rankColor =
-                    index === 0
-                      ? "bg-amber-500/10 border-amber-500/40 text-amber-400"
-                      : index === 1
-                      ? "bg-slate-400/10 border-slate-400/30 text-slate-300"
-                      : index === 2
-                      ? "bg-amber-800/10 border-amber-700/30 text-amber-600"
-                      : "bg-zinc-900/60 border-zinc-800 text-zinc-300";
+                  const isGold = index === 0;
+                  const isSilver = index === 1;
+                  const isBronze = index === 2;
+
+                  const cardStyle = isGold
+                    ? "bg-zinc-900/80 hover:bg-zinc-900 border-amber-500/30 text-white shadow-lg"
+                    : isSilver
+                    ? "bg-zinc-900/60 hover:bg-zinc-900 border-slate-400/20 text-white"
+                    : isBronze
+                    ? "bg-zinc-900/60 hover:bg-zinc-900 border-amber-800/20 text-white"
+                    : "bg-white/[0.02] hover:bg-white/[0.05] border-white/[0.06] hover:border-white/[0.12] text-zinc-200";
+
+                  const badgeStyle = isGold
+                    ? "bg-amber-500/20 text-amber-300 border-amber-400/40"
+                    : isSilver
+                    ? "bg-slate-400/20 text-slate-200 border-slate-300/40"
+                    : isBronze
+                    ? "bg-amber-800/20 text-amber-400 border-amber-700/40"
+                    : "bg-white/[0.04] text-zinc-400 border-white/[0.06]";
 
                   return (
                     <div
                       key={item.id || index}
-                      className={`flex items-center justify-between p-4 rounded-2xl border backdrop-blur-md transition-all duration-300 ${rankColor}`}
+                      className={`flex items-center justify-between p-3.5 rounded-2xl border backdrop-blur-xl transition-all duration-300 group hover:scale-[1.01] ${cardStyle}`}
                     >
-                      <div className="flex items-center gap-4">
-                        <span className="text-2xl font-black font-mono w-10 text-center">
-                          #{index + 1}
-                        </span>
-                        {item.userImage ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={item.userImage}
-                            alt="Avatar"
-                            className="w-10 h-10 rounded-full object-cover border border-zinc-700"
-                          />
-                        ) : (
-                          <div className="w-10 h-10 rounded-full bg-zinc-800 text-white font-bold text-base flex items-center justify-center border border-zinc-700">
-                            {(item.userName || "U").substring(0, 1).toUpperCase()}
-                          </div>
-                        )}
-                        <div>
-                          <h4 className="font-extrabold text-base text-white">{item.userName}</h4>
-                          {item.linesCleared !== undefined && (
-                            <span className="text-xs text-zinc-400">{item.linesCleared} lines cleared</span>
+                      <div className="flex items-center gap-3.5">
+                        {/* Rank Badge */}
+                        <div
+                          className={`w-9 h-9 rounded-xl border flex items-center justify-center font-mono font-black text-xs sm:text-sm ${badgeStyle}`}
+                        >
+                          {isGold ? "🥇" : isSilver ? "🥈" : isBronze ? "🥉" : `#${index + 1}`}
+                        </div>
+
+                        {/* Avatar & User Details */}
+                        <div className="flex items-center gap-3">
+                          {item.userImage ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={item.userImage}
+                              alt="Avatar"
+                              className="w-9 h-9 rounded-xl object-cover border border-white/10"
+                            />
+                          ) : (
+                            <div className="w-9 h-9 rounded-xl bg-zinc-800 border border-white/10 text-white font-bold text-xs flex items-center justify-center">
+                              {(item.userName || "U").substring(0, 1).toUpperCase()}
+                            </div>
                           )}
+                          <div>
+                            <h3 className="font-extrabold text-sm text-white group-hover:text-emerald-300 transition-colors line-clamp-1">
+                              {item.userName}
+                            </h3>
+                            {item.linesCleared !== undefined && item.linesCleared > 0 && (
+                              <span className="text-[10px] text-zinc-500 font-mono font-semibold">
+                                {item.linesCleared} distance
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
 
-                      <div className="text-right">
-                        <span className="text-2xl font-black text-white">{item.score}</span>
-                        <span className="text-[10px] text-zinc-500 block font-bold">POINTS</span>
+                      {/* Score Value */}
+                      <div className="text-right pl-2">
+                        <span className="text-xl font-black font-mono text-white tracking-tight group-hover:text-emerald-400 transition-colors">
+                          {item.score}
+                        </span>
+                        <span className="text-[9px] text-zinc-500 block font-mono font-bold uppercase tracking-wider">
+                          PTS
+                        </span>
                       </div>
                     </div>
                   );
@@ -380,13 +382,8 @@ export default function GameDisplayScreen() {
             )}
           </div>
         )}
-      </div>
-
-      {/* Footer Branding */}
-      <div className="relative z-10 w-full max-w-7xl flex items-center justify-between border-t border-zinc-800 pt-4 text-xs text-zinc-500">
-        <span>EventLoop Sub-Event Platform</span>
-        <span>Real-Time Socket Sync</span>
-      </div>
+      </main>
     </div>
   );
 }
+
