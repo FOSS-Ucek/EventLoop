@@ -14,9 +14,8 @@ export default function Navbar({ session }: NavbarProps) {
   const { eventConfig } = useEvent();
   const pathname = usePathname();
 
-  // Hide Navbar completely on full-screen hype display route, game display route, or for non-admin users
+  // Hide Navbar completely on full-screen hype display route or game display route
   if (pathname?.startsWith("/hype/") || pathname?.startsWith("/game/")) return null;
-  if (session?.role !== "admin") return null;
 
   return (
     <nav
