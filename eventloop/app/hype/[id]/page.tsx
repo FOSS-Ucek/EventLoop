@@ -102,7 +102,7 @@ export default function HypeMeterScreen() {
           return { ...prev, currentTaps: cappedTaps, tapsNeeded };
         });
 
-        if (payload.tapper) {
+        if (payload.tapper && !completedRef.current) {
           const now = Date.now();
           if (now - lastNotifTimeRef.current > 80) {
             lastNotifTimeRef.current = now;
@@ -124,6 +124,7 @@ export default function HypeMeterScreen() {
         if (completedRef.current) return;
         completedRef.current = true;
 
+        setTapNotifications([]);
         setShowBlackout(true);
         setTimeout(() => {
           setMeter((prev) => (prev ? { ...prev, status: "completed", videoUrl: payload.videoUrl || prev.videoUrl, currentTaps: payload.finalScore || prev.currentTaps } : prev));
@@ -240,34 +241,36 @@ export default function HypeMeterScreen() {
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-zinc-900 rounded-full blur-[100px]" />
       <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-zinc-900 rounded-full blur-[100px]" />
 
-      {/* Floating Tapper Donation Popup Messages (Bottom-left overlay) */}
-      <div className="fixed bottom-8 left-8 z-50 flex flex-col-reverse gap-3 max-w-sm pointer-events-none">
-        {tapNotifications.map((notif) => (
-          <div
-            key={notif.id}
-            className="flex items-center gap-3 p-3 bg-zinc-900/90 backdrop-blur-lg border border-zinc-800 rounded-2xl shadow-[0_10px_25px_rgba(0,0,0,0.5)] animate-[slideIn_0.3s_ease-out]"
-          >
-            {notif.image ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={notif.image}
-                alt={notif.name}
-                className="w-10 h-10 rounded-full object-cover border-2 border-zinc-700 shadow-md"
-              />
-            ) : (
-              <div className="w-10 h-10 rounded-full bg-zinc-800 text-white font-bold flex items-center justify-center border-2 border-zinc-700 shadow-md text-base">
-                {notif.name.substring(0, 1).toUpperCase()}
+      {/* Floating Tapper Donation Popup Messages (Bottom-left overlay) — Hidden when completed */}
+      {!isCompleted && tapNotifications.length > 0 && (
+        <div className="fixed bottom-8 left-8 z-50 flex flex-col-reverse gap-3 max-w-sm pointer-events-none">
+          {tapNotifications.map((notif) => (
+            <div
+              key={notif.id}
+              className="flex items-center gap-3 p-3 bg-zinc-900/90 backdrop-blur-lg border border-zinc-800 rounded-2xl shadow-[0_10px_25px_rgba(0,0,0,0.5)] animate-[slideIn_0.3s_ease-out]"
+            >
+              {notif.image ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={notif.image}
+                  alt={notif.name}
+                  className="w-10 h-10 rounded-full object-cover border-2 border-zinc-700 shadow-md"
+                />
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-zinc-800 text-white font-bold flex items-center justify-center border-2 border-zinc-700 shadow-md text-base">
+                  {notif.name.substring(0, 1).toUpperCase()}
+                </div>
+              )}
+              <div className="flex flex-col">
+                <span className="font-extrabold text-sm text-white drop-shadow-sm flex items-center gap-1">
+                  {notif.name} <Zap className="w-3.5 h-3.5 fill-white text-white animate-pulse" />
+                </span>
+                <span className="text-xs text-zinc-400 font-medium">Tapped the Hype Meter! 🔥</span>
               </div>
-            )}
-            <div className="flex flex-col">
-              <span className="font-extrabold text-sm text-white drop-shadow-sm flex items-center gap-1">
-                {notif.name} <Zap className="w-3.5 h-3.5 fill-white text-white animate-pulse" />
-              </span>
-              <span className="text-xs text-zinc-400 font-medium">Tapped the Hype Meter! 🔥</span>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       {/* Blackout Transition Overlay */}
       {showBlackout && (
