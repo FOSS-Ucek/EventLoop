@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
 import { io, Socket } from "socket.io-client";
-import { Gamepad2, Maximize, Minimize, Crown, Sparkles } from "lucide-react";
+import { Maximize, Minimize, Crown, Sparkles } from "lucide-react";
 
 interface GameScore {
   id: string;
@@ -190,22 +190,9 @@ export default function GameDisplayScreen() {
   const isCompleted = game.status === "completed";
 
   return (
-    <div className="min-h-screen bg-[#050508] text-white overflow-hidden flex flex-col items-center justify-between relative select-none w-full p-4 sm:p-8 font-sans">
+    <div className="min-h-screen bg-[#050508] text-white overflow-hidden flex flex-col items-center justify-start relative select-none w-full p-4 sm:p-8 font-sans">
       {/* Floating Header HUD (Minimal & Clean, No App Bar) */}
-      <header className="relative z-20 w-full max-w-5xl flex items-center justify-between gap-4 pt-2 pb-4">
-        {/* Left: Game Title Pill */}
-        <div className="flex items-center gap-3 bg-white/[0.03] backdrop-blur-2xl border border-white/[0.08] px-4 py-2 rounded-full shadow-2xl animate-fade-in">
-          <div className="w-7 h-7 rounded-full bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center">
-            <Gamepad2 className="w-4 h-4 text-emerald-400" />
-          </div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-sm sm:text-base font-extrabold text-white tracking-wide">{game.title}</h1>
-            <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-zinc-400 px-2 py-0.5 rounded-full bg-white/[0.06]">
-              {game.gameType}
-            </span>
-          </div>
-        </div>
-
+      <header className="relative z-20 w-full max-w-5xl flex items-center justify-end gap-4 pt-2 pb-4">
         {/* Right: Timer Pill & Fullscreen Toggle */}
         <div className="flex items-center gap-3 animate-fade-in">
           {/* Timer HUD Pill */}
@@ -228,7 +215,7 @@ export default function GameDisplayScreen() {
       </header>
 
       {/* Main Leaderboard Section */}
-      <main className="relative z-10 w-full max-w-5xl my-auto flex-1 flex flex-col justify-center py-6">
+      <main className="relative z-10 w-full max-w-5xl flex-1 flex flex-col justify-start pt-2 pb-6">
         {isCompleted && leaderboard.length > 0 ? (
           /* Winner Podium View */
           <div className="w-full flex flex-col items-center space-y-10 animate-scale-in">
@@ -298,67 +285,96 @@ export default function GameDisplayScreen() {
           </div>
         ) : (
           /* Live Standings View */
-          <div className="w-full space-y-4 animate-fade-in">
+          <div className="w-full flex flex-col items-center space-y-6 animate-fade-in">
+            <h2 className="text-2xl sm:text-4xl font-black tracking-widest uppercase text-white text-center">
+              Leaderboard
+            </h2>
+
             {leaderboard.length === 0 ? (
-              <div className="text-center py-24 text-zinc-500 text-sm font-medium">
-                Waiting for players to submit scores... Run distance in Dino Runner to reach the top!
+              <div className="w-full flex flex-col items-center space-y-6">
+                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/[0.03] border border-white/[0.08] text-zinc-400 text-xs font-mono font-medium">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                  Awaiting Tournament Scores...
+                </div>
+
+                {/* Skeleton Tiles Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full opacity-60">
+                  {[1, 2, 3, 4].map((i) => (
+                    <div
+                      key={i}
+                      className="flex items-center justify-between p-4 sm:p-5 rounded-2xl border border-white/[0.06] bg-zinc-900/40 backdrop-blur-xl animate-pulse"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-11 h-11 rounded-xl bg-white/10" />
+                        <div className="flex items-center gap-3.5">
+                          <div className="w-11 h-11 rounded-xl bg-white/10" />
+                          <div className="space-y-2">
+                            <div className="w-28 h-4 rounded bg-white/10" />
+                            <div className="w-16 h-3 rounded bg-white/5" />
+                          </div>
+                        </div>
+                      </div>
+                      <div className="w-14 h-7 rounded-lg bg-white/10" />
+                    </div>
+                  ))}
+                </div>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[68vh] overflow-y-auto pr-1">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-h-[80vh] overflow-y-auto px-1">
                 {leaderboard.map((item, index) => {
                   const isGold = index === 0;
                   const isSilver = index === 1;
                   const isBronze = index === 2;
 
                   const cardStyle = isGold
-                    ? "bg-zinc-900/80 hover:bg-zinc-900 border-amber-500/30 text-white shadow-lg"
+                    ? "bg-zinc-900/90 hover:bg-zinc-900 border-amber-500/40 text-white shadow-xl"
                     : isSilver
-                    ? "bg-zinc-900/60 hover:bg-zinc-900 border-slate-400/20 text-white"
+                    ? "bg-zinc-900/70 hover:bg-zinc-900 border-slate-400/30 text-white"
                     : isBronze
-                    ? "bg-zinc-900/60 hover:bg-zinc-900 border-amber-800/20 text-white"
-                    : "bg-white/[0.02] hover:bg-white/[0.05] border-white/[0.06] hover:border-white/[0.12] text-zinc-200";
+                    ? "bg-zinc-900/70 hover:bg-zinc-900 border-amber-800/30 text-white"
+                    : "bg-white/[0.03] hover:bg-white/[0.06] border-white/[0.08] hover:border-white/[0.14] text-zinc-200";
 
                   const badgeStyle = isGold
-                    ? "bg-amber-500/20 text-amber-300 border-amber-400/40"
+                    ? "bg-amber-500/20 text-amber-300 border-amber-400/50"
                     : isSilver
-                    ? "bg-slate-400/20 text-slate-200 border-slate-300/40"
+                    ? "bg-slate-400/20 text-slate-200 border-slate-300/50"
                     : isBronze
-                    ? "bg-amber-800/20 text-amber-400 border-amber-700/40"
-                    : "bg-white/[0.04] text-zinc-400 border-white/[0.06]";
+                    ? "bg-amber-800/20 text-amber-400 border-amber-700/50"
+                    : "bg-white/[0.05] text-zinc-400 border-white/[0.08]";
 
                   return (
                     <div
                       key={item.id || index}
-                      className={`flex items-center justify-between p-3.5 rounded-2xl border backdrop-blur-xl transition-all duration-300 group hover:scale-[1.01] ${cardStyle}`}
+                      className={`flex items-center justify-between p-4 sm:p-5 rounded-2xl border backdrop-blur-xl transition-all duration-300 group hover:scale-[1.01] ${cardStyle}`}
                     >
-                      <div className="flex items-center gap-3.5">
+                      <div className="flex items-center gap-4">
                         {/* Rank Badge */}
                         <div
-                          className={`w-9 h-9 rounded-xl border flex items-center justify-center font-mono font-black text-xs sm:text-sm ${badgeStyle}`}
+                          className={`w-11 h-11 rounded-xl border flex items-center justify-center font-mono font-black text-sm sm:text-base ${badgeStyle}`}
                         >
                           {isGold ? "🥇" : isSilver ? "🥈" : isBronze ? "🥉" : `#${index + 1}`}
                         </div>
 
                         {/* Avatar & User Details */}
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3.5">
                           {item.userImage ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
                               src={item.userImage}
                               alt="Avatar"
-                              className="w-9 h-9 rounded-xl object-cover border border-white/10"
+                              className="w-11 h-11 rounded-xl object-cover border border-white/10"
                             />
                           ) : (
-                            <div className="w-9 h-9 rounded-xl bg-zinc-800 border border-white/10 text-white font-bold text-xs flex items-center justify-center">
+                            <div className="w-11 h-11 rounded-xl bg-zinc-800 border border-white/10 text-white font-black text-sm flex items-center justify-center">
                               {(item.userName || "U").substring(0, 1).toUpperCase()}
                             </div>
                           )}
                           <div>
-                            <h3 className="font-extrabold text-sm text-white group-hover:text-emerald-300 transition-colors line-clamp-1">
+                            <h3 className="font-black text-base sm:text-lg text-white group-hover:text-emerald-300 transition-colors line-clamp-1">
                               {item.userName}
                             </h3>
                             {item.linesCleared !== undefined && item.linesCleared > 0 && (
-                              <span className="text-[10px] text-zinc-500 font-mono font-semibold">
+                              <span className="text-xs text-zinc-400 font-mono font-semibold">
                                 {item.linesCleared} distance
                               </span>
                             )}
@@ -367,11 +383,11 @@ export default function GameDisplayScreen() {
                       </div>
 
                       {/* Score Value */}
-                      <div className="text-right pl-2">
-                        <span className="text-xl font-black font-mono text-white tracking-tight group-hover:text-emerald-400 transition-colors">
+                      <div className="text-right pl-3">
+                        <span className="text-2xl sm:text-3xl font-black font-mono text-white tracking-tight group-hover:text-emerald-400 transition-colors">
                           {item.score}
                         </span>
-                        <span className="text-[9px] text-zinc-500 block font-mono font-bold uppercase tracking-wider">
+                        <span className="text-xs text-zinc-400 block font-mono font-bold uppercase tracking-wider">
                           PTS
                         </span>
                       </div>
